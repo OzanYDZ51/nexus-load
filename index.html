@@ -1,0 +1,2837 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS — Intelligence Logistique</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ═══════════════════════════════════════════
+           CSS CUSTOM PROPERTIES
+           ═══════════════════════════════════════════ */
+        :root {
+            --bg-deep: #06060f;
+            --bg-primary: #0a0a1a;
+            --bg-surface: rgba(12, 12, 30, 0.85);
+            --bg-card: rgba(15, 15, 40, 0.7);
+            --bg-hover: rgba(20, 20, 50, 0.9);
+            --border-subtle: rgba(100, 200, 255, 0.08);
+            --border-glow: rgba(0, 240, 255, 0.25);
+            --primary: #00f0ff;
+            --primary-dim: rgba(0, 240, 255, 0.15);
+            --secondary: #7b2fff;
+            --secondary-dim: rgba(123, 47, 255, 0.15);
+            --accent: #ff006e;
+            --accent-dim: rgba(255, 0, 110, 0.15);
+            --success: #00ff88;
+            --warning: #ffaa00;
+            --danger: #ff4444;
+            --text-primary: #e8ecff;
+            --text-secondary: #8892b0;
+            --text-dim: #4a5568;
+            --glass-bg: rgba(10, 10, 30, 0.6);
+            --glass-border: rgba(100, 200, 255, 0.1);
+            --glass-blur: 20px;
+            --sidebar-width: 280px;
+            --font-display: 'Orbitron', sans-serif;
+            --font-body: 'Rajdhani', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --shadow-glow: 0 0 30px rgba(0, 240, 255, 0.1);
+            --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
+            --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-smooth: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ═══════════════════════════════════════════
+           RESET & BASE
+           ═══════════════════════════════════════════ */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            min-height: 100vh;
+            font-size: 16px;
+            line-height: 1.6;
+            font-weight: 500;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--primary-dim); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0, 240, 255, 0.3); }
+
+        ::selection { background: var(--primary-dim); color: var(--primary); }
+
+        /* ═══════════════════════════════════════════
+           PARTICLE BACKGROUND
+           ═══════════════════════════════════════════ */
+        #particles-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* ═══════════════════════════════════════════
+           SIDEBAR
+           ═══════════════════════════════════════════ */
+        .sidebar {
+            position: fixed;
+            left: 0; top: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--bg-surface);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border-right: 1px solid var(--glass-border);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            transition: transform var(--transition-smooth);
+        }
+
+        .sidebar-logo {
+            padding: 28px 24px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .logo-mark {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .logo-icon {
+            width: 44px; height: 44px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 900;
+            font-family: var(--font-display);
+            color: var(--bg-deep);
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.3);
+            animation: logoPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes logoPulse {
+            0%, 100% { box-shadow: 0 0 25px rgba(0, 240, 255, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(0, 240, 255, 0.5), 0 0 80px rgba(123, 47, 255, 0.2); }
+        }
+
+        .logo-text {
+            font-family: var(--font-display);
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 3px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .logo-subtitle {
+            font-size: 10px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-top: 2px;
+            font-weight: 600;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 16px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            color: var(--text-secondary);
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0;
+            width: 3px; height: 100%;
+            background: var(--primary);
+            border-radius: 0 2px 2px 0;
+            transform: scaleY(0);
+            transition: transform var(--transition-fast);
+        }
+
+        .nav-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--primary-dim);
+            color: var(--primary);
+        }
+
+        .nav-item.active::before {
+            transform: scaleY(1);
+        }
+
+        .nav-icon {
+            width: 22px; height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .nav-icon svg {
+            width: 20px; height: 20px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .sidebar-footer {
+            padding: 20px 24px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .ai-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: linear-gradient(135deg, var(--primary-dim), var(--secondary-dim));
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
+            font-family: var(--font-display);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--primary);
+        }
+
+        .ai-dot {
+            width: 8px; height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: aiDotPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes aiDotPulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--primary); }
+            50% { opacity: 0.4; box-shadow: 0 0 2px var(--primary); }
+        }
+
+        /* ═══════════════════════════════════════════
+           MOBILE MENU
+           ═══════════════════════════════════════════ */
+        .mobile-header {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 60px;
+            background: var(--bg-surface);
+            backdrop-filter: blur(var(--glass-blur));
+            border-bottom: 1px solid var(--glass-border);
+            z-index: 101;
+            align-items: center;
+            padding: 0 20px;
+            justify-content: space-between;
+        }
+
+        .hamburger {
+            width: 36px; height: 36px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 4px;
+        }
+
+        .hamburger span {
+            width: 100%; height: 2px;
+            background: var(--text-primary);
+            border-radius: 1px;
+            transition: all var(--transition-fast);
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 99;
+        }
+
+        /* ═══════════════════════════════════════════
+           MAIN CONTENT
+           ═══════════════════════════════════════════ */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+            padding: 40px;
+        }
+
+        .section {
+            display: none;
+            animation: sectionFadeIn 0.5s ease-out;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes sectionFadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-header {
+            margin-bottom: 36px;
+        }
+
+        .section-title {
+            font-family: var(--font-display);
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin-bottom: 6px;
+        }
+
+        .section-subtitle {
+            font-size: 15px;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* ═══════════════════════════════════════════
+           GLASS CARD
+           ═══════════════════════════════════════════ */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            box-shadow: var(--shadow-card);
+            transition: all var(--transition-smooth);
+        }
+
+        .glass-card:hover {
+            border-color: var(--border-glow);
+            box-shadow: var(--shadow-card), var(--shadow-glow);
+        }
+
+        /* ═══════════════════════════════════════════
+           UPLOAD ZONE
+           ═══════════════════════════════════════════ */
+        .upload-zone {
+            border: 2px dashed var(--border-glow);
+            border-radius: var(--radius-lg);
+            padding: 60px 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+            background: var(--glass-bg);
+        }
+
+        .upload-zone::before {
+            content: '';
+            position: absolute;
+            top: -2px; left: -2px;
+            right: -2px; bottom: -2px;
+            border-radius: var(--radius-lg);
+            background: linear-gradient(45deg, var(--primary), var(--secondary), var(--accent), var(--primary));
+            background-size: 400% 400%;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity var(--transition-smooth);
+            animation: borderGradient 4s linear infinite;
+        }
+
+        @keyframes borderGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .upload-zone:hover::before,
+        .upload-zone.drag-over::before { opacity: 1; }
+
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: transparent;
+            background: var(--bg-hover);
+            transform: translateY(-2px);
+        }
+
+        .upload-icon {
+            width: 72px; height: 72px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            background: var(--primary-dim);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-smooth);
+        }
+
+        .upload-zone:hover .upload-icon {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px var(--primary-dim);
+        }
+
+        .upload-icon svg {
+            width: 32px; height: 32px;
+            stroke: var(--primary);
+            fill: none;
+            stroke-width: 1.8;
+        }
+
+        .upload-title {
+            font-family: var(--font-display);
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .upload-desc {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .upload-formats {
+            margin-top: 16px;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .format-tag {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 600;
+            background: var(--secondary-dim);
+            color: var(--secondary);
+            border: 1px solid rgba(123, 47, 255, 0.2);
+        }
+
+        #file-input { display: none; }
+
+        /* ═══════════════════════════════════════════
+           BUTTONS
+           ═══════════════════════════════════════════ */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-body);
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #00b8d4);
+            color: var(--bg-deep);
+            box-shadow: 0 4px 20px rgba(0, 240, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(0, 240, 255, 0.5);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--border-glow);
+            background: var(--bg-hover);
+        }
+
+        .btn-glow {
+            background: linear-gradient(135deg, var(--secondary), var(--accent));
+            color: white;
+            font-family: var(--font-display);
+            font-size: 14px;
+            letter-spacing: 2px;
+            padding: 16px 36px;
+            border-radius: var(--radius-md);
+            box-shadow: 0 4px 30px rgba(123, 47, 255, 0.4);
+            animation: btnGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes btnGlow {
+            0%, 100% { box-shadow: 0 4px 30px rgba(123, 47, 255, 0.4); }
+            50% { box-shadow: 0 4px 50px rgba(123, 47, 255, 0.6), 0 0 80px rgba(255, 0, 110, 0.2); }
+        }
+
+        .btn-glow:hover {
+            transform: translateY(-3px) scale(1.02);
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
+        .btn-icon {
+            width: 36px; height: 36px;
+            padding: 0;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ═══════════════════════════════════════════
+           DATA TABLE
+           ═══════════════════════════════════════════ */
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border);
+            margin-top: 24px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .data-table thead th {
+            background: rgba(0, 240, 255, 0.05);
+            padding: 14px 18px;
+            text-align: left;
+            font-family: var(--font-display);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--primary);
+            border-bottom: 1px solid var(--border-glow);
+            white-space: nowrap;
+        }
+
+        .data-table tbody td {
+            padding: 12px 18px;
+            border-bottom: 1px solid var(--border-subtle);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        .data-table tbody tr {
+            transition: background var(--transition-fast);
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(0, 240, 255, 0.03);
+        }
+
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .ref-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 6px;
+            background: var(--primary-dim);
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        /* ═══════════════════════════════════════════
+           ORDER SECTION
+           ═══════════════════════════════════════════ */
+        .order-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+            margin-top: 24px;
+        }
+
+        .order-form .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-family: var(--font-display);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .form-select, .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 15px;
+            font-weight: 600;
+            transition: all var(--transition-fast);
+            outline: none;
+        }
+
+        .form-select:focus, .form-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-dim);
+        }
+
+        .form-select option {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .qty-control {
+            display: flex;
+            align-items: center;
+            gap: 0;
+        }
+
+        .qty-btn {
+            width: 44px; height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            color: var(--primary);
+            font-size: 20px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .qty-btn:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+        .qty-btn:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+        .qty-btn:hover { background: var(--primary-dim); }
+
+        .qty-input {
+            width: 70px;
+            text-align: center;
+            border-radius: 0;
+            border-left: none;
+            border-right: none;
+            font-family: var(--font-mono);
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .order-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            transition: all var(--transition-fast);
+        }
+
+        .order-item:hover {
+            border-color: var(--border-glow);
+        }
+
+        .order-item-info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .order-item-qty {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 15px;
+        }
+
+        .order-item-ref {
+            font-weight: 600;
+        }
+
+        .order-item-dims {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+        }
+
+        .remove-btn {
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            transition: all var(--transition-fast);
+            font-size: 18px;
+        }
+
+        .remove-btn:hover {
+            background: var(--accent-dim);
+        }
+
+        .order-summary {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 240, 255, 0.03);
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius-md);
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 14px;
+        }
+
+        .summary-row .label { color: var(--text-secondary); }
+        .summary-row .value { font-family: var(--font-mono); font-weight: 700; color: var(--primary); }
+
+        /* ═══════════════════════════════════════════
+           OPTIMIZATION RESULTS
+           ═══════════════════════════════════════════ */
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            text-align: center;
+            transition: all var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-glow);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .stat-value {
+            font-family: var(--font-display);
+            font-size: 36px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .stat-icon {
+            font-size: 28px;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        /* ═══════════════════════════════════════════
+           3D VIEWER
+           ═══════════════════════════════════════════ */
+        .viewer-container {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 28px;
+        }
+
+        .viewer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .viewer-title {
+            font-family: var(--font-display);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--primary);
+        }
+
+        .viewer-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        #three-container {
+            width: 100%;
+            height: 500px;
+            cursor: grab;
+        }
+
+        #three-container:active { cursor: grabbing; }
+
+        .truck-nav {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 16px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .truck-nav-label {
+            font-family: var(--font-display);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+            min-width: 160px;
+            text-align: center;
+        }
+
+        /* ═══════════════════════════════════════════
+           TRUCK DETAIL CARDS
+           ═══════════════════════════════════════════ */
+        .trucks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 20px;
+        }
+
+        .truck-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            transition: all var(--transition-smooth);
+        }
+
+        .truck-card:hover {
+            border-color: var(--border-glow);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .truck-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
+
+        .truck-number {
+            font-family: var(--font-display);
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: var(--primary);
+        }
+
+        .fill-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .fill-high { background: rgba(0, 255, 136, 0.15); color: var(--success); }
+        .fill-medium { background: rgba(255, 170, 0, 0.15); color: var(--warning); }
+        .fill-low { background: rgba(255, 68, 68, 0.15); color: var(--danger); }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-card);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 30px; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3));
+            animation: progressShine 2s linear infinite;
+        }
+
+        @keyframes progressShine {
+            from { transform: translateX(-30px); }
+            to { transform: translateX(30px); }
+        }
+
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+        }
+
+        .truck-items-list {
+            margin-top: 14px;
+        }
+
+        .truck-item-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 13px;
+        }
+
+        .truck-item-row:last-child { border-bottom: none; }
+
+        .item-color-dot {
+            width: 10px; height: 10px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        /* ═══════════════════════════════════════════
+           DASHBOARD
+           ═══════════════════════════════════════════ */
+        .dashboard-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .dash-stat {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dash-stat-icon {
+            width: 48px; height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 14px;
+        }
+
+        .dash-stat-value {
+            font-family: var(--font-display);
+            font-size: 30px;
+            font-weight: 900;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .dash-stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+            margin-bottom: 28px;
+        }
+
+        .chart-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+        }
+
+        .chart-title {
+            font-family: var(--font-display);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 280px;
+        }
+
+        /* ═══════════════════════════════════════════
+           AI MODAL
+           ═══════════════════════════════════════════ */
+        .ai-modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(6, 6, 15, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ai-modal-overlay.active { display: flex; }
+
+        .ai-modal {
+            width: 480px;
+            max-width: 90vw;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius-lg);
+            padding: 48px 40px;
+            text-align: center;
+            box-shadow: 0 0 100px rgba(0, 240, 255, 0.1), 0 0 200px rgba(123, 47, 255, 0.05);
+            animation: modalAppear 0.5s ease-out;
+        }
+
+        @keyframes modalAppear {
+            from { opacity: 0; transform: scale(0.9) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .ai-brain {
+            width: 80px; height: 80px;
+            margin: 0 auto 24px;
+            position: relative;
+        }
+
+        .ai-brain-inner {
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            border: 2px solid var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: brainPulse 2s ease-in-out infinite;
+            position: relative;
+        }
+
+        .ai-brain-inner::before,
+        .ai-brain-inner::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid var(--primary);
+            animation: brainRing 3s linear infinite;
+        }
+
+        .ai-brain-inner::before {
+            width: 120%; height: 120%;
+            opacity: 0.3;
+        }
+
+        .ai-brain-inner::after {
+            width: 140%; height: 140%;
+            opacity: 0.15;
+            animation-direction: reverse;
+        }
+
+        @keyframes brainPulse {
+            0%, 100% { box-shadow: 0 0 20px var(--primary-dim); }
+            50% { box-shadow: 0 0 40px var(--primary-dim), inset 0 0 20px var(--primary-dim); }
+        }
+
+        @keyframes brainRing {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .ai-brain-text {
+            font-family: var(--font-display);
+            font-size: 14px;
+            font-weight: 900;
+            color: var(--primary);
+            letter-spacing: 2px;
+        }
+
+        .ai-modal-title {
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin-bottom: 28px;
+            color: var(--text-primary);
+        }
+
+        .ai-steps {
+            text-align: left;
+            margin-bottom: 28px;
+        }
+
+        .ai-step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            font-size: 14px;
+            color: var(--text-dim);
+            transition: all 0.5s ease;
+        }
+
+        .ai-step.active {
+            color: var(--primary);
+        }
+
+        .ai-step.done {
+            color: var(--success);
+        }
+
+        .ai-step-icon {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .ai-step.active .ai-step-icon {
+            animation: stepPulse 1s ease-in-out infinite;
+            background: var(--primary-dim);
+        }
+
+        @keyframes stepPulse {
+            0%, 100% { box-shadow: 0 0 0 0 var(--primary-dim); }
+            50% { box-shadow: 0 0 0 6px transparent; }
+        }
+
+        .ai-progress {
+            width: 100%;
+            height: 4px;
+            background: var(--bg-card);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .ai-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 2px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 0%;
+        }
+
+        /* ═══════════════════════════════════════════
+           EMPTY STATE
+           ═══════════════════════════════════════════ */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state-text {
+            font-size: 15px;
+            margin-bottom: 20px;
+        }
+
+        /* ═══════════════════════════════════════════
+           TOOLBAR
+           ═══════════════════════════════════════════ */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            flex: 1;
+            max-width: 400px;
+            transition: all var(--transition-fast);
+        }
+
+        .search-box:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-dim);
+        }
+
+        .search-box svg {
+            width: 18px; height: 18px;
+            stroke: var(--text-dim);
+            fill: none;
+            stroke-width: 2;
+            flex-shrink: 0;
+        }
+
+        .search-box input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 14px;
+            outline: none;
+        }
+
+        .search-box input::placeholder { color: var(--text-dim); }
+
+        .product-count {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .product-count span {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        /* ═══════════════════════════════════════════
+           NOTIFICATION TOAST
+           ═══════════════════════════════════════════ */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            padding: 14px 22px;
+            background: var(--bg-surface);
+            backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-card);
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: toastIn 0.4s ease-out;
+            min-width: 280px;
+        }
+
+        .toast.success { border-left: 3px solid var(--success); }
+        .toast.error { border-left: 3px solid var(--danger); }
+        .toast.info { border-left: 3px solid var(--primary); }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(40px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(40px); }
+        }
+
+        /* ═══════════════════════════════════════════
+           RESPONSIVE
+           ═══════════════════════════════════════════ */
+        @media (max-width: 1024px) {
+            .order-grid {
+                grid-template-columns: 1fr;
+            }
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .mobile-header {
+                display: flex;
+            }
+
+            .sidebar-overlay.active {
+                display: block;
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 80px 16px 24px;
+            }
+
+            .section-title { font-size: 22px; }
+
+            .upload-zone { padding: 40px 20px; }
+
+            .result-stats {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            #three-container { height: 350px; }
+
+            .trucks-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ═══ PARTICLE BACKGROUND ═══ -->
+    <canvas id="particles-canvas"></canvas>
+
+    <!-- ═══ TOAST CONTAINER ═══ -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- ═══ AI PROCESSING MODAL ═══ -->
+    <div class="ai-modal-overlay" id="ai-modal">
+        <div class="ai-modal">
+            <div class="ai-brain">
+                <div class="ai-brain-inner">
+                    <span class="ai-brain-text">N</span>
+                </div>
+            </div>
+            <div class="ai-modal-title">NEXUS OPTIMISE</div>
+            <div class="ai-steps" id="ai-steps">
+                <div class="ai-step" data-step="0">
+                    <div class="ai-step-icon">1</div>
+                    <span>Analyse des dimensions produits...</span>
+                </div>
+                <div class="ai-step" data-step="1">
+                    <div class="ai-step-icon">2</div>
+                    <span>Calcul volumétrique avancé...</span>
+                </div>
+                <div class="ai-step" data-step="2">
+                    <div class="ai-step-icon">3</div>
+                    <span>Optimisation 3D par intelligence artificielle...</span>
+                </div>
+                <div class="ai-step" data-step="3">
+                    <div class="ai-step-icon">4</div>
+                    <span>Génération du plan de chargement...</span>
+                </div>
+            </div>
+            <div class="ai-progress">
+                <div class="ai-progress-fill" id="ai-progress-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ MOBILE HEADER ═══ -->
+    <div class="mobile-header">
+        <button class="hamburger" id="hamburger" onclick="toggleSidebar()">
+            <span></span><span></span><span></span>
+        </button>
+        <span class="logo-text" style="font-family:var(--font-display);font-size:16px;font-weight:800;letter-spacing:2px;background:linear-gradient(135deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">NEXUS</span>
+        <div class="ai-badge"><div class="ai-dot"></div>IA</div>
+    </div>
+
+    <!-- ═══ SIDEBAR OVERLAY ═══ -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- ═══ SIDEBAR ═══ -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-mark">
+                <div class="logo-icon">N</div>
+                <div>
+                    <div class="logo-text">NEXUS</div>
+                    <div class="logo-subtitle">Intelligence Logistique</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-nav">
+            <div class="nav-item active" onclick="navigateTo('catalogue')" data-section="catalogue">
+                <div class="nav-icon">
+                    <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                </div>
+                Catalogue
+            </div>
+            <div class="nav-item" onclick="navigateTo('commande')" data-section="commande">
+                <div class="nav-icon">
+                    <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                </div>
+                Commande
+            </div>
+            <div class="nav-item" onclick="navigateTo('optimisation')" data-section="optimisation">
+                <div class="nav-icon">
+                    <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="23 7 16 12 16 2 23 7"/><line x1="1" y1="20" x2="23" y2="20"/><line x1="5" y1="20" x2="5" y2="16"/><line x1="19" y1="20" x2="19" y2="16"/></svg>
+                </div>
+                Optimisation
+            </div>
+            <div class="nav-item" onclick="navigateTo('dashboard')" data-section="dashboard">
+                <div class="nav-icon">
+                    <svg viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+                </div>
+                Tableau de Bord
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="ai-badge">
+                <div class="ai-dot"></div>
+                NEXUS IA ACTIF
+            </div>
+        </div>
+    </nav>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <div class="main-content">
+
+        <!-- ═══ CATALOGUE SECTION ═══ -->
+        <div class="section active" id="section-catalogue">
+            <div class="section-header">
+                <div class="section-title"><span class="gradient-text">Catalogue Produits</span></div>
+                <div class="section-subtitle">Importez votre fichier Excel pour charger le catalogue de références</div>
+            </div>
+
+            <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+                <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
+                <div class="upload-icon">
+                    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </div>
+                <div class="upload-title">GLISSEZ VOTRE FICHIER ICI</div>
+                <div class="upload-desc">ou cliquez pour sélectionner un fichier</div>
+                <div class="upload-formats">
+                    <span class="format-tag">.XLSX</span>
+                    <span class="format-tag">.XLS</span>
+                    <span class="format-tag">.CSV</span>
+                </div>
+            </div>
+
+            <div style="margin-top:20px;text-align:center;">
+                <button class="btn btn-secondary btn-sm" onclick="loadDemoData()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    Charger données de démonstration
+                </button>
+            </div>
+
+            <div id="catalog-content" style="display:none;">
+                <div class="toolbar" style="margin-top:28px;">
+                    <div class="search-box">
+                        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" placeholder="Rechercher une référence..." id="catalog-search" oninput="filterCatalog()">
+                    </div>
+                    <div class="product-count">
+                        <span id="catalog-count">0</span> produits chargés
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Référence</th>
+                                <th>Poids (kg)</th>
+                                <th>Longueur (m)</th>
+                                <th>Largeur (m)</th>
+                                <th>Hauteur (m)</th>
+                                <th>Volume (m³)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="catalog-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ COMMANDE SECTION ═══ -->
+        <div class="section" id="section-commande">
+            <div class="section-header">
+                <div class="section-title"><span class="gradient-text">Nouvelle Commande</span></div>
+                <div class="section-subtitle">Sélectionnez les produits et quantités pour cette commande</div>
+            </div>
+
+            <div id="no-catalog-warning" class="empty-state">
+                <div class="empty-state-icon">&#9888;</div>
+                <div class="empty-state-text">Veuillez d'abord importer un catalogue dans l'onglet Catalogue</div>
+                <button class="btn btn-primary btn-sm" onclick="navigateTo('catalogue')">Aller au Catalogue</button>
+            </div>
+
+            <div id="order-content" style="display:none;">
+                <div class="order-grid">
+                    <div class="glass-card order-form">
+                        <h3 style="font-family:var(--font-display);font-size:14px;font-weight:700;letter-spacing:2px;color:var(--text-secondary);margin-bottom:24px;">AJOUTER UN PRODUIT</h3>
+                        <div class="form-group">
+                            <label class="form-label">Référence produit</label>
+                            <select class="form-select" id="product-select">
+                                <option value="">— Sélectionnez une référence —</option>
+                            </select>
+                        </div>
+                        <div id="product-preview" style="display:none;margin-bottom:20px;padding:14px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid var(--glass-border);">
+                            <div style="font-size:12px;color:var(--text-dim);font-family:var(--font-display);letter-spacing:1px;margin-bottom:8px;">DÉTAILS PRODUIT</div>
+                            <div id="product-preview-content" style="font-family:var(--font-mono);font-size:13px;color:var(--text-secondary);line-height:1.8;"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Quantité</label>
+                            <div class="qty-control">
+                                <button class="qty-btn" onclick="changeQty(-1)">−</button>
+                                <input type="number" class="form-input qty-input" id="qty-input" value="1" min="1">
+                                <button class="qty-btn" onclick="changeQty(1)">+</button>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="addToOrder()" style="width:100%;justify-content:center;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Ajouter à la commande
+                        </button>
+                    </div>
+
+                    <div class="glass-card">
+                        <h3 style="font-family:var(--font-display);font-size:14px;font-weight:700;letter-spacing:2px;color:var(--text-secondary);margin-bottom:24px;">COMMANDE EN COURS</h3>
+                        <div id="order-items-list">
+                            <div class="empty-state" style="padding:40px 20px;">
+                                <div class="empty-state-icon" style="font-size:36px;">&#128722;</div>
+                                <div class="empty-state-text" style="font-size:13px;">Aucun produit ajouté</div>
+                            </div>
+                        </div>
+                        <div class="order-summary" id="order-summary" style="display:none;">
+                            <div class="summary-row">
+                                <span class="label">Articles</span>
+                                <span class="value" id="summary-items">0</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="label">Poids total</span>
+                                <span class="value" id="summary-weight">0 kg</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="label">Volume total</span>
+                                <span class="value" id="summary-volume">0 m³</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="label">Estimation camions</span>
+                                <span class="value" id="summary-trucks">~0</span>
+                            </div>
+                        </div>
+                        <div id="optimize-btn-wrapper" style="display:none;margin-top:24px;">
+                            <button class="btn btn-glow" onclick="runOptimization()" style="width:100%;justify-content:center;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                LANCER L'OPTIMISATION IA
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ OPTIMISATION SECTION ═══ -->
+        <div class="section" id="section-optimisation">
+            <div class="section-header">
+                <div class="section-title"><span class="gradient-text">Résultats d'Optimisation</span></div>
+                <div class="section-subtitle">Plan de chargement optimisé par l'intelligence artificielle NEXUS</div>
+            </div>
+
+            <div id="no-results" class="empty-state">
+                <div class="empty-state-icon">&#128640;</div>
+                <div class="empty-state-text">Lancez une optimisation depuis l'onglet Commande pour voir les résultats</div>
+                <button class="btn btn-primary btn-sm" onclick="navigateTo('commande')">Aller à Commande</button>
+            </div>
+
+            <div id="results-content" style="display:none;">
+                <div class="result-stats" id="result-stats"></div>
+
+                <div class="viewer-container">
+                    <div class="viewer-header">
+                        <div class="viewer-title">VISUALISATION 3D DU CHARGEMENT</div>
+                        <div class="viewer-controls">
+                            <button class="btn btn-secondary btn-sm" onclick="resetCamera()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                                Réinitialiser vue
+                            </button>
+                        </div>
+                    </div>
+                    <div id="three-container"></div>
+                    <div class="truck-nav">
+                        <button class="btn btn-secondary btn-sm btn-icon" onclick="prevTruck()">&#9664;</button>
+                        <span class="truck-nav-label" id="truck-nav-label">Camion 1 / 1</span>
+                        <button class="btn btn-secondary btn-sm btn-icon" onclick="nextTruck()">&#9654;</button>
+                    </div>
+                </div>
+
+                <h3 style="font-family:var(--font-display);font-size:14px;font-weight:700;letter-spacing:2px;color:var(--text-secondary);margin-bottom:20px;">DÉTAIL PAR CAMION</h3>
+                <div class="trucks-grid" id="trucks-grid"></div>
+            </div>
+        </div>
+
+        <!-- ═══ DASHBOARD SECTION ═══ -->
+        <div class="section" id="section-dashboard">
+            <div class="section-header">
+                <div class="section-title"><span class="gradient-text">Tableau de Bord</span></div>
+                <div class="section-subtitle">Vue d'ensemble de l'activité logistique et métriques de performance</div>
+            </div>
+
+            <div class="dashboard-stats" id="dashboard-stats">
+                <div class="dash-stat">
+                    <div class="dash-stat-icon" style="background:var(--primary-dim);color:var(--primary);">&#128230;</div>
+                    <div class="dash-stat-value" id="dash-orders">0</div>
+                    <div class="dash-stat-label">Commandes traitées</div>
+                </div>
+                <div class="dash-stat">
+                    <div class="dash-stat-icon" style="background:var(--secondary-dim);color:var(--secondary);">&#128666;</div>
+                    <div class="dash-stat-value" id="dash-trucks">0</div>
+                    <div class="dash-stat-label">Camions utilisés</div>
+                </div>
+                <div class="dash-stat">
+                    <div class="dash-stat-icon" style="background:rgba(0,255,136,0.15);color:var(--success);">&#9889;</div>
+                    <div class="dash-stat-value" id="dash-efficiency">0%</div>
+                    <div class="dash-stat-label">Efficacité moyenne</div>
+                </div>
+                <div class="dash-stat">
+                    <div class="dash-stat-icon" style="background:var(--accent-dim);color:var(--accent);">&#128200;</div>
+                    <div class="dash-stat-value" id="dash-volume">0</div>
+                    <div class="dash-stat-label">m³ optimisés</div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-title">Taux de remplissage par commande</div>
+                    <div class="chart-container">
+                        <canvas id="chart-fill-rate"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">Répartition du volume</div>
+                    <div class="chart-container">
+                        <canvas id="chart-volume-dist"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-title">Historique des commandes</div>
+                <div class="table-wrapper" style="max-height:360px;overflow-y:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Articles</th>
+                                <th>Poids</th>
+                                <th>Volume</th>
+                                <th>Camions</th>
+                                <th>Efficacité</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:30px;">Aucun historique disponible</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         JAVASCRIPT
+         ═══════════════════════════════════════════ -->
+    <script>
+    /* ═══════════════════════════════════════════
+       APP STATE
+       ═══════════════════════════════════════════ */
+    const APP = {
+        catalog: [],
+        currentOrder: [],
+        orderHistory: JSON.parse(localStorage.getItem('nexus_history') || '[]'),
+        optimizationResults: null,
+        activeSection: 'catalogue',
+        currentTruckIndex: 0,
+    };
+
+    const TRUCK = { length: 13, width: 2.4, height: 2.7, maxWeight: 24000 };
+    const TRUCK_VOLUME = TRUCK.length * TRUCK.width * TRUCK.height;
+
+    const ITEM_COLORS = [
+        0x00f0ff, 0x7b2fff, 0xff006e, 0x00ff88,
+        0xffaa00, 0xff4444, 0x44aaff, 0xff44ff,
+        0x44ffaa, 0xffff44, 0x88aaff, 0xff8844,
+    ];
+
+    let threeScene, threeCamera, threeRenderer, threeControls;
+    let truckMeshGroup = null;
+    let fillRateChart = null, volumeDistChart = null;
+
+    /* ═══════════════════════════════════════════
+       INITIALIZATION
+       ═══════════════════════════════════════════ */
+    document.addEventListener('DOMContentLoaded', () => {
+        initParticles();
+        initDragDrop();
+        initFileInput();
+        initProductSelect();
+        updateDashboard();
+    });
+
+    /* ═══════════════════════════════════════════
+       PARTICLE NETWORK BACKGROUND
+       ═══════════════════════════════════════════ */
+    function initParticles() {
+        const canvas = document.getElementById('particles-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        const PARTICLE_COUNT = 80;
+        const CONNECTION_DIST = 150;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        resize();
+        window.addEventListener('resize', resize);
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 0.4,
+                vy: (Math.random() - 0.5) * 0.4,
+                radius: Math.random() * 2 + 0.5,
+                opacity: Math.random() * 0.5 + 0.1,
+            });
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+            });
+
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < CONNECTION_DIST) {
+                        const alpha = (1 - dist / CONNECTION_DIST) * 0.15;
+                        ctx.strokeStyle = `rgba(0, 240, 255, ${alpha})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(0, 240, 255, ${p.opacity})`;
+                ctx.fill();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    }
+
+    /* ═══════════════════════════════════════════
+       NAVIGATION
+       ═══════════════════════════════════════════ */
+    function navigateTo(section) {
+        APP.activeSection = section;
+
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+        document.getElementById(`section-${section}`).classList.add('active');
+        document.querySelector(`.nav-item[data-section="${section}"]`).classList.add('active');
+
+        if (section === 'commande') {
+            if (APP.catalog.length > 0) {
+                document.getElementById('no-catalog-warning').style.display = 'none';
+                document.getElementById('order-content').style.display = 'block';
+            } else {
+                document.getElementById('no-catalog-warning').style.display = 'block';
+                document.getElementById('order-content').style.display = 'none';
+            }
+        }
+
+        if (section === 'optimisation' && APP.optimizationResults) {
+            document.getElementById('no-results').style.display = 'none';
+            document.getElementById('results-content').style.display = 'block';
+            initThreeScene();
+            renderTruck3D(APP.currentTruckIndex);
+        }
+
+        if (section === 'dashboard') {
+            updateDashboard();
+        }
+
+        if (window.innerWidth <= 768) {
+            closeSidebar();
+        }
+    }
+
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('active');
+    }
+
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('sidebar-overlay').classList.remove('active');
+    }
+
+    /* ═══════════════════════════════════════════
+       EXCEL IMPORT
+       ═══════════════════════════════════════════ */
+    function initDragDrop() {
+        const zone = document.getElementById('upload-zone');
+
+        zone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            zone.classList.add('drag-over');
+        });
+
+        zone.addEventListener('dragleave', () => {
+            zone.classList.remove('drag-over');
+        });
+
+        zone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            zone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) processFile(file);
+        });
+    }
+
+    function initFileInput() {
+        document.getElementById('file-input').addEventListener('change', (e) => {
+            if (e.target.files[0]) processFile(e.target.files[0]);
+        });
+    }
+
+    function processFile(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['xlsx', 'xls', 'csv'].includes(ext)) {
+            showToast('Format non supporté. Utilisez .xlsx, .xls ou .csv', 'error');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const workbook = XLSX.read(e.target.result, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+                if (data.length === 0) {
+                    showToast('Le fichier est vide', 'error');
+                    return;
+                }
+
+                APP.catalog = data.map(row => {
+                    const keys = Object.keys(row);
+                    return {
+                        reference: String(row[keys[0]] || '').trim(),
+                        poids: parseFloat(row[keys[1]]) || 0,
+                        longueur: parseFloat(row[keys[2]]) || 0,
+                        largeur: parseFloat(row[keys[3]]) || 0,
+                        hauteur: parseFloat(row[keys[4]]) || 1,
+                    };
+                }).filter(item => item.reference);
+
+                APP.catalog.forEach(item => {
+                    item.volume = +(item.longueur * item.largeur * item.hauteur).toFixed(4);
+                });
+
+                renderCatalog();
+                populateProductSelect();
+                showToast(`${APP.catalog.length} produits importés avec succès`, 'success');
+            } catch (err) {
+                showToast('Erreur lors de la lecture du fichier: ' + err.message, 'error');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function loadDemoData() {
+        const refs = ['PNL-001','PNL-002','PNL-003','PNL-004','PNL-005','PNL-006','PNL-007','PNL-008','BLK-010','BLK-011','BLK-012','CYL-020','CYL-021','PLT-030','PLT-031','PLT-032','BOX-040','BOX-041','BOX-042','TUB-050'];
+        const names = ['Panneau Standard','Panneau Large','Panneau XL','Panneau Mince','Panneau Carré','Panneau Mini','Panneau Double','Panneau Pro','Bloc Béton A','Bloc Béton B','Bloc Béton C','Cylindre Alu','Cylindre Acier','Palette EUR','Palette US','Palette Custom','Caisse Standard','Caisse Renforcée','Caisse Export','Tube Acier'];
+
+        APP.catalog = refs.map((ref, i) => {
+            const l = +(Math.random() * 3 + 0.5).toFixed(2);
+            const w = +(Math.random() * 1.5 + 0.3).toFixed(2);
+            const h = +(Math.random() * 1.5 + 0.2).toFixed(2);
+            const p = +(Math.random() * 800 + 50).toFixed(1);
+            return {
+                reference: ref,
+                name: names[i],
+                poids: p,
+                longueur: l,
+                largeur: w,
+                hauteur: h,
+                volume: +(l * w * h).toFixed(4),
+            };
+        });
+
+        renderCatalog();
+        populateProductSelect();
+        showToast(`${APP.catalog.length} produits de démonstration chargés`, 'success');
+    }
+
+    function renderCatalog() {
+        const container = document.getElementById('catalog-content');
+        const tbody = document.getElementById('catalog-table-body');
+        container.style.display = 'block';
+        document.getElementById('catalog-count').textContent = APP.catalog.length;
+
+        tbody.innerHTML = APP.catalog.map(item => `
+            <tr>
+                <td><span class="ref-badge">${item.reference}</span></td>
+                <td>${item.poids.toLocaleString('fr-FR')} kg</td>
+                <td>${item.longueur} m</td>
+                <td>${item.largeur} m</td>
+                <td>${item.hauteur} m</td>
+                <td>${item.volume} m³</td>
+            </tr>
+        `).join('');
+    }
+
+    function filterCatalog() {
+        const query = document.getElementById('catalog-search').value.toLowerCase();
+        const rows = document.querySelectorAll('#catalog-table-body tr');
+        let count = 0;
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            const visible = text.includes(query);
+            row.style.display = visible ? '' : 'none';
+            if (visible) count++;
+        });
+        document.getElementById('catalog-count').textContent = count;
+    }
+
+    /* ═══════════════════════════════════════════
+       ORDER MANAGEMENT
+       ═══════════════════════════════════════════ */
+    function initProductSelect() {
+        document.getElementById('product-select').addEventListener('change', function() {
+            const ref = this.value;
+            const preview = document.getElementById('product-preview');
+            if (!ref) { preview.style.display = 'none'; return; }
+            const item = APP.catalog.find(c => c.reference === ref);
+            if (!item) return;
+            preview.style.display = 'block';
+            document.getElementById('product-preview-content').innerHTML = `
+                Poids: <span style="color:var(--primary)">${item.poids} kg</span><br>
+                Dimensions: <span style="color:var(--primary)">${item.longueur} × ${item.largeur} × ${item.hauteur} m</span><br>
+                Volume: <span style="color:var(--primary)">${item.volume} m³</span>
+            `;
+        });
+    }
+
+    function populateProductSelect() {
+        const select = document.getElementById('product-select');
+        select.innerHTML = '<option value="">— Sélectionnez une référence —</option>' +
+            APP.catalog.map(item => `<option value="${item.reference}">${item.reference}${item.name ? ' — ' + item.name : ''}</option>`).join('');
+    }
+
+    function changeQty(delta) {
+        const input = document.getElementById('qty-input');
+        const val = Math.max(1, parseInt(input.value) + delta);
+        input.value = val;
+    }
+
+    function addToOrder() {
+        const ref = document.getElementById('product-select').value;
+        const qty = parseInt(document.getElementById('qty-input').value) || 1;
+
+        if (!ref) {
+            showToast('Veuillez sélectionner un produit', 'error');
+            return;
+        }
+
+        const item = APP.catalog.find(c => c.reference === ref);
+        if (!item) return;
+
+        const existing = APP.currentOrder.find(o => o.reference === ref);
+        if (existing) {
+            existing.qty += qty;
+        } else {
+            APP.currentOrder.push({ ...item, qty });
+        }
+
+        document.getElementById('product-select').value = '';
+        document.getElementById('qty-input').value = 1;
+        document.getElementById('product-preview').style.display = 'none';
+
+        renderOrder();
+        showToast(`${qty}x ${ref} ajouté à la commande`, 'success');
+    }
+
+    function removeFromOrder(index) {
+        APP.currentOrder.splice(index, 1);
+        renderOrder();
+    }
+
+    function renderOrder() {
+        const list = document.getElementById('order-items-list');
+        const summary = document.getElementById('order-summary');
+        const optimizeBtn = document.getElementById('optimize-btn-wrapper');
+
+        if (APP.currentOrder.length === 0) {
+            list.innerHTML = `<div class="empty-state" style="padding:40px 20px;">
+                <div class="empty-state-icon" style="font-size:36px;">&#128722;</div>
+                <div class="empty-state-text" style="font-size:13px;">Aucun produit ajouté</div>
+            </div>`;
+            summary.style.display = 'none';
+            optimizeBtn.style.display = 'none';
+            return;
+        }
+
+        const colorMap = {};
+        let colorIdx = 0;
+        APP.currentOrder.forEach(item => {
+            if (!(item.reference in colorMap)) {
+                colorMap[item.reference] = ITEM_COLORS[colorIdx % ITEM_COLORS.length];
+                colorIdx++;
+            }
+        });
+
+        list.innerHTML = APP.currentOrder.map((item, i) => {
+            const color = '#' + colorMap[item.reference].toString(16).padStart(6, '0');
+            return `
+            <div class="order-item">
+                <div class="order-item-info">
+                    <span class="item-color-dot" style="background:${color}"></span>
+                    <div>
+                        <div class="order-item-ref">${item.reference}</div>
+                        <div class="order-item-dims">${item.longueur}×${item.largeur}×${item.hauteur}m — ${item.poids}kg</div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:14px;">
+                    <span class="order-item-qty">×${item.qty}</span>
+                    <button class="remove-btn" onclick="removeFromOrder(${i})">&#10005;</button>
+                </div>
+            </div>`;
+        }).join('');
+
+        let totalItems = 0, totalWeight = 0, totalVolume = 0;
+        APP.currentOrder.forEach(item => {
+            totalItems += item.qty;
+            totalWeight += item.poids * item.qty;
+            totalVolume += item.volume * item.qty;
+        });
+
+        const estTrucks = Math.max(
+            Math.ceil(totalVolume / TRUCK_VOLUME),
+            Math.ceil(totalWeight / TRUCK.maxWeight)
+        );
+
+        document.getElementById('summary-items').textContent = totalItems;
+        document.getElementById('summary-weight').textContent = totalWeight.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' kg';
+        document.getElementById('summary-volume').textContent = totalVolume.toFixed(2) + ' m³';
+        document.getElementById('summary-trucks').textContent = '~' + estTrucks;
+
+        summary.style.display = 'block';
+        optimizeBtn.style.display = 'block';
+    }
+
+    /* ═══════════════════════════════════════════
+       OPTIMIZATION — 3D BIN PACKING
+       ═══════════════════════════════════════════ */
+    async function runOptimization() {
+        if (APP.currentOrder.length === 0) {
+            showToast('Ajoutez des produits à la commande', 'error');
+            return;
+        }
+
+        await showAIModal();
+
+        const items = [];
+        let colorIdx = 0;
+        const colorMap = {};
+
+        APP.currentOrder.forEach(orderItem => {
+            if (!(orderItem.reference in colorMap)) {
+                colorMap[orderItem.reference] = ITEM_COLORS[colorIdx % ITEM_COLORS.length];
+                colorIdx++;
+            }
+            for (let i = 0; i < orderItem.qty; i++) {
+                items.push({
+                    reference: orderItem.reference,
+                    longueur: orderItem.longueur,
+                    largeur: orderItem.largeur,
+                    hauteur: orderItem.hauteur,
+                    poids: orderItem.poids,
+                    volume: orderItem.volume,
+                    color: colorMap[orderItem.reference],
+                });
+            }
+        });
+
+        items.sort((a, b) => b.volume - a.volume);
+
+        const trucks = binPack3D(items);
+
+        APP.optimizationResults = trucks;
+        APP.currentTruckIndex = 0;
+
+        const totalWeight = items.reduce((s, i) => s + i.poids, 0);
+        const totalVolume = items.reduce((s, i) => s + i.volume, 0);
+        const usedVolume = trucks.reduce((s, t) => s + t.items.reduce((ss, it) => ss + it.volume, 0), 0);
+        const avgFill = trucks.length > 0 ? (usedVolume / (trucks.length * TRUCK_VOLUME)) * 100 : 0;
+
+        const historyEntry = {
+            date: new Date().toLocaleString('fr-FR'),
+            items: items.length,
+            weight: totalWeight,
+            volume: totalVolume,
+            trucks: trucks.length,
+            efficiency: avgFill,
+        };
+        APP.orderHistory.push(historyEntry);
+        localStorage.setItem('nexus_history', JSON.stringify(APP.orderHistory));
+
+        hideAIModal();
+        renderOptimizationResults(trucks, items);
+        navigateTo('optimisation');
+    }
+
+    function binPack3D(items) {
+        const trucks = [];
+
+        for (const item of items) {
+            let placed = false;
+
+            for (const truck of trucks) {
+                if (truck.currentWeight + item.poids > TRUCK.maxWeight) continue;
+                if (tryPlace(truck, item)) {
+                    placed = true;
+                    break;
+                }
+            }
+
+            if (!placed) {
+                const newTruck = {
+                    items: [],
+                    currentWeight: 0,
+                    availablePoints: [{ x: 0, y: 0, z: 0 }],
+                };
+                if (tryPlace(newTruck, item)) {
+                    trucks.push(newTruck);
+                } else {
+                    newTruck.items.push({
+                        ...item,
+                        position: { x: 0, y: 0, z: 0 },
+                        dims: { l: item.longueur, w: item.largeur, h: item.hauteur },
+                    });
+                    newTruck.currentWeight += item.poids;
+                    trucks.push(newTruck);
+                }
+            }
+        }
+
+        return trucks;
+    }
+
+    function tryPlace(truck, item) {
+        const orientations = [
+            { l: item.longueur, w: item.largeur, h: item.hauteur },
+            { l: item.largeur, w: item.longueur, h: item.hauteur },
+            { l: item.longueur, w: item.hauteur, h: item.largeur },
+            { l: item.hauteur, w: item.largeur, h: item.longueur },
+            { l: item.largeur, w: item.hauteur, h: item.longueur },
+            { l: item.hauteur, w: item.longueur, h: item.largeur },
+        ];
+
+        const sortedPoints = [...truck.availablePoints].sort((a, b) => {
+            if (Math.abs(a.z - b.z) > 0.01) return a.z - b.z;
+            if (Math.abs(a.y - b.y) > 0.01) return a.y - b.y;
+            return a.x - b.x;
+        });
+
+        for (const point of sortedPoints) {
+            for (const orient of orientations) {
+                if (point.x + orient.l > TRUCK.length + 0.01) continue;
+                if (point.y + orient.w > TRUCK.width + 0.01) continue;
+                if (point.z + orient.h > TRUCK.height + 0.01) continue;
+
+                let overlap = false;
+                for (const placed of truck.items) {
+                    if (boxesOverlap(point, orient, placed.position, placed.dims)) {
+                        overlap = true;
+                        break;
+                    }
+                }
+
+                if (!overlap) {
+                    truck.items.push({
+                        ...item,
+                        position: { ...point },
+                        dims: { ...orient },
+                    });
+                    truck.currentWeight += item.poids;
+
+                    const idx = truck.availablePoints.findIndex(p =>
+                        Math.abs(p.x - point.x) < 0.01 &&
+                        Math.abs(p.y - point.y) < 0.01 &&
+                        Math.abs(p.z - point.z) < 0.01
+                    );
+                    if (idx > -1) truck.availablePoints.splice(idx, 1);
+
+                    const newPoints = [
+                        { x: +(point.x + orient.l).toFixed(4), y: point.y, z: point.z },
+                        { x: point.x, y: +(point.y + orient.w).toFixed(4), z: point.z },
+                        { x: point.x, y: point.y, z: +(point.z + orient.h).toFixed(4) },
+                    ];
+
+                    for (const np of newPoints) {
+                        if (np.x <= TRUCK.length && np.y <= TRUCK.width && np.z <= TRUCK.height) {
+                            const exists = truck.availablePoints.some(ep =>
+                                Math.abs(ep.x - np.x) < 0.01 &&
+                                Math.abs(ep.y - np.y) < 0.01 &&
+                                Math.abs(ep.z - np.z) < 0.01
+                            );
+                            if (!exists) truck.availablePoints.push(np);
+                        }
+                    }
+
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    function boxesOverlap(pos1, dims1, pos2, dims2) {
+        return (
+            pos1.x < pos2.x + dims2.l - 0.01 && pos1.x + dims1.l > pos2.x + 0.01 &&
+            pos1.y < pos2.y + dims2.w - 0.01 && pos1.y + dims1.w > pos2.y + 0.01 &&
+            pos1.z < pos2.z + dims2.h - 0.01 && pos1.z + dims1.h > pos2.z + 0.01
+        );
+    }
+
+    /* ═══════════════════════════════════════════
+       RENDER OPTIMIZATION RESULTS
+       ═══════════════════════════════════════════ */
+    function renderOptimizationResults(trucks, items) {
+        document.getElementById('no-results').style.display = 'none';
+        document.getElementById('results-content').style.display = 'block';
+
+        const totalWeight = items.reduce((s, i) => s + i.poids, 0);
+        const totalVolume = items.reduce((s, i) => s + i.volume, 0);
+        const usedVolume = trucks.reduce((s, t) => s + t.items.reduce((ss, it) => ss + it.volume, 0), 0);
+        const avgFill = trucks.length > 0 ? (usedVolume / (trucks.length * TRUCK_VOLUME)) * 100 : 0;
+
+        document.getElementById('result-stats').innerHTML = `
+            <div class="stat-card">
+                <span class="stat-icon">&#128666;</span>
+                <div class="stat-value" data-count="${trucks.length}">0</div>
+                <div class="stat-label">Camions nécessaires</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">&#128230;</span>
+                <div class="stat-value" data-count="${items.length}">0</div>
+                <div class="stat-label">Articles placés</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">&#9889;</span>
+                <div class="stat-value" data-count="${avgFill.toFixed(0)}" data-suffix="%">0</div>
+                <div class="stat-label">Taux d'optimisation</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">&#9878;</span>
+                <div class="stat-value" data-count="${(totalWeight/1000).toFixed(1)}" data-suffix="t">0</div>
+                <div class="stat-label">Poids total</div>
+            </div>
+        `;
+
+        setTimeout(() => animateCounters(), 200);
+
+        document.getElementById('truck-nav-label').textContent = `Camion 1 / ${trucks.length}`;
+
+        const grid = document.getElementById('trucks-grid');
+        grid.innerHTML = trucks.map((truck, i) => {
+            const truckVolume = truck.items.reduce((s, it) => s + it.volume, 0);
+            const fillPct = (truckVolume / TRUCK_VOLUME * 100).toFixed(1);
+            const weightPct = (truck.currentWeight / TRUCK.maxWeight * 100).toFixed(1);
+            const fillClass = fillPct >= 70 ? 'fill-high' : fillPct >= 40 ? 'fill-medium' : 'fill-low';
+
+            const itemCounts = {};
+            truck.items.forEach(it => {
+                if (!itemCounts[it.reference]) itemCounts[it.reference] = { count: 0, color: it.color, volume: 0, weight: 0 };
+                itemCounts[it.reference].count++;
+                itemCounts[it.reference].volume += it.volume;
+                itemCounts[it.reference].weight += it.poids;
+            });
+
+            return `
+            <div class="truck-card">
+                <div class="truck-card-header">
+                    <span class="truck-number">CAMION ${i + 1}</span>
+                    <span class="fill-badge ${fillClass}">${fillPct}% rempli</span>
+                </div>
+                <div style="margin-bottom:12px;">
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:4px;font-family:var(--font-mono);">
+                        <span>Volume: ${truckVolume.toFixed(2)} / ${TRUCK_VOLUME.toFixed(1)} m³</span>
+                        <span>${fillPct}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:0%" data-fill="${fillPct}"></div>
+                    </div>
+                </div>
+                <div style="margin-bottom:12px;">
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:4px;font-family:var(--font-mono);">
+                        <span>Poids: ${(truck.currentWeight/1000).toFixed(2)} / ${TRUCK.maxWeight/1000} t</span>
+                        <span>${weightPct}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:0%;background:linear-gradient(90deg,var(--secondary),var(--accent));" data-fill="${weightPct}"></div>
+                    </div>
+                </div>
+                <div class="truck-items-list">
+                    ${Object.entries(itemCounts).map(([ref, data]) => {
+                        const color = '#' + data.color.toString(16).padStart(6, '0');
+                        return `<div class="truck-item-row">
+                            <div><span class="item-color-dot" style="background:${color}"></span>${ref} ×${data.count}</div>
+                            <div style="color:var(--text-dim);font-family:var(--font-mono);font-size:12px;">${data.volume.toFixed(2)}m³ / ${data.weight.toFixed(0)}kg</div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>`;
+        }).join('');
+
+        setTimeout(() => {
+            document.querySelectorAll('.progress-fill[data-fill]').forEach(bar => {
+                bar.style.width = bar.dataset.fill + '%';
+            });
+        }, 300);
+    }
+
+    /* ═══════════════════════════════════════════
+       THREE.JS 3D VISUALIZATION
+       ═══════════════════════════════════════════ */
+    function initThreeScene() {
+        const container = document.getElementById('three-container');
+        if (threeRenderer) {
+            container.innerHTML = '';
+        }
+
+        threeScene = new THREE.Scene();
+        threeScene.background = new THREE.Color(0x06060f);
+        threeScene.fog = new THREE.FogExp2(0x06060f, 0.015);
+
+        threeCamera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+        threeCamera.position.set(18, 10, 12);
+
+        threeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        threeRenderer.setSize(container.clientWidth, container.clientHeight);
+        threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        threeRenderer.shadowMap.enabled = true;
+        threeRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(threeRenderer.domElement);
+
+        threeControls = new THREE.OrbitControls(threeCamera, threeRenderer.domElement);
+        threeControls.enableDamping = true;
+        threeControls.dampingFactor = 0.08;
+        threeControls.target.set(TRUCK.length / 2, TRUCK.height / 2, TRUCK.width / 2);
+
+        const ambientLight = new THREE.AmbientLight(0x404060, 0.6);
+        threeScene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(15, 20, 10);
+        dirLight.castShadow = true;
+        threeScene.add(dirLight);
+
+        const pointLight = new THREE.PointLight(0x00f0ff, 0.4, 50);
+        pointLight.position.set(6.5, 8, 1.2);
+        threeScene.add(pointLight);
+
+        const gridHelper = new THREE.GridHelper(40, 40, 0x1a1a3a, 0x0d0d25);
+        gridHelper.position.y = -0.01;
+        threeScene.add(gridHelper);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            threeControls.update();
+            threeRenderer.render(threeScene, threeCamera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            if (!threeCamera || !threeRenderer) return;
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            threeCamera.aspect = w / h;
+            threeCamera.updateProjectionMatrix();
+            threeRenderer.setSize(w, h);
+        });
+    }
+
+    function renderTruck3D(index) {
+        if (!APP.optimizationResults || !threeScene) return;
+
+        if (truckMeshGroup) {
+            threeScene.remove(truckMeshGroup);
+        }
+
+        truckMeshGroup = new THREE.Group();
+        const truck = APP.optimizationResults[index];
+
+        // Truck wireframe
+        const truckGeo = new THREE.BoxGeometry(TRUCK.length, TRUCK.height, TRUCK.width);
+        const truckEdges = new THREE.EdgesGeometry(truckGeo);
+        const truckLine = new THREE.LineSegments(truckEdges, new THREE.LineBasicMaterial({
+            color: 0x00f0ff,
+            transparent: true,
+            opacity: 0.4,
+        }));
+        truckLine.position.set(TRUCK.length / 2, TRUCK.height / 2, TRUCK.width / 2);
+        truckMeshGroup.add(truckLine);
+
+        // Truck floor
+        const floorGeo = new THREE.PlaneGeometry(TRUCK.length, TRUCK.width);
+        const floorMat = new THREE.MeshPhongMaterial({
+            color: 0x0a0a2a,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide,
+        });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.set(TRUCK.length / 2, 0.01, TRUCK.width / 2);
+        floor.receiveShadow = true;
+        truckMeshGroup.add(floor);
+
+        // Floor grid
+        const floorGrid = new THREE.GridHelper(Math.max(TRUCK.length, TRUCK.width) + 1, 26, 0x1a1a4a, 0x0f0f30);
+        floorGrid.position.set(TRUCK.length / 2, 0.02, TRUCK.width / 2);
+        truckMeshGroup.add(floorGrid);
+
+        // Items
+        truck.items.forEach((item, i) => {
+            const geo = new THREE.BoxGeometry(
+                item.dims.l * 0.98,
+                item.dims.h * 0.98,
+                item.dims.w * 0.98
+            );
+
+            const mat = new THREE.MeshPhongMaterial({
+                color: item.color,
+                transparent: true,
+                opacity: 0.85,
+                shininess: 80,
+                emissive: item.color,
+                emissiveIntensity: 0.1,
+            });
+
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(
+                item.position.x + item.dims.l / 2,
+                item.position.z + item.dims.h / 2,
+                item.position.y + item.dims.w / 2
+            );
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
+            const edgesGeo = new THREE.EdgesGeometry(geo);
+            const edgesMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 });
+            const edges = new THREE.LineSegments(edgesGeo, edgesMat);
+            mesh.add(edges);
+
+            mesh.scale.set(0, 0, 0);
+            truckMeshGroup.add(mesh);
+
+            setTimeout(() => {
+                animateScale(mesh, { x: 1, y: 1, z: 1 }, 400);
+            }, i * 80);
+        });
+
+        threeScene.add(truckMeshGroup);
+
+        document.getElementById('truck-nav-label').textContent =
+            `Camion ${index + 1} / ${APP.optimizationResults.length}`;
+    }
+
+    function animateScale(mesh, target, duration) {
+        const start = { x: mesh.scale.x, y: mesh.scale.y, z: mesh.scale.z };
+        const startTime = performance.now();
+
+        function tick(now) {
+            const elapsed = now - startTime;
+            const t = Math.min(elapsed / duration, 1);
+            const ease = 1 - Math.pow(1 - t, 3);
+
+            mesh.scale.x = start.x + (target.x - start.x) * ease;
+            mesh.scale.y = start.y + (target.y - start.y) * ease;
+            mesh.scale.z = start.z + (target.z - start.z) * ease;
+
+            if (t < 1) requestAnimationFrame(tick);
+        }
+
+        requestAnimationFrame(tick);
+    }
+
+    function prevTruck() {
+        if (!APP.optimizationResults) return;
+        APP.currentTruckIndex = (APP.currentTruckIndex - 1 + APP.optimizationResults.length) % APP.optimizationResults.length;
+        renderTruck3D(APP.currentTruckIndex);
+    }
+
+    function nextTruck() {
+        if (!APP.optimizationResults) return;
+        APP.currentTruckIndex = (APP.currentTruckIndex + 1) % APP.optimizationResults.length;
+        renderTruck3D(APP.currentTruckIndex);
+    }
+
+    function resetCamera() {
+        if (!threeCamera || !threeControls) return;
+        threeCamera.position.set(18, 10, 12);
+        threeControls.target.set(TRUCK.length / 2, TRUCK.height / 2, TRUCK.width / 2);
+        threeControls.update();
+    }
+
+    /* ═══════════════════════════════════════════
+       DASHBOARD
+       ═══════════════════════════════════════════ */
+    function updateDashboard() {
+        const history = APP.orderHistory;
+        const totalOrders = history.length;
+        const totalTrucks = history.reduce((s, h) => s + h.trucks, 0);
+        const avgEff = totalOrders > 0 ? (history.reduce((s, h) => s + h.efficiency, 0) / totalOrders) : 0;
+        const totalVol = history.reduce((s, h) => s + h.volume, 0);
+
+        document.getElementById('dash-orders').textContent = totalOrders;
+        document.getElementById('dash-trucks').textContent = totalTrucks;
+        document.getElementById('dash-efficiency').textContent = avgEff.toFixed(1) + '%';
+        document.getElementById('dash-volume').textContent = totalVol.toFixed(1);
+
+        // History table
+        const tbody = document.getElementById('history-table-body');
+        if (history.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:30px;">Aucun historique disponible</td></tr>';
+        } else {
+            tbody.innerHTML = history.slice().reverse().map(h => `
+                <tr>
+                    <td>${h.date}</td>
+                    <td>${h.items}</td>
+                    <td>${(h.weight / 1000).toFixed(2)} t</td>
+                    <td>${h.volume.toFixed(2)} m³</td>
+                    <td>${h.trucks}</td>
+                    <td><span class="fill-badge ${h.efficiency >= 70 ? 'fill-high' : h.efficiency >= 40 ? 'fill-medium' : 'fill-low'}">${h.efficiency.toFixed(1)}%</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // Charts
+        renderCharts(history);
+    }
+
+    function renderCharts(history) {
+        const chartDefaults = {
+            color: '#8892b0',
+            borderColor: 'rgba(100,200,255,0.1)',
+        };
+
+        Chart.defaults.color = chartDefaults.color;
+        Chart.defaults.borderColor = chartDefaults.borderColor;
+
+        // Fill rate chart
+        const fillCtx = document.getElementById('chart-fill-rate');
+        if (fillRateChart) fillRateChart.destroy();
+
+        const labels = history.map((_, i) => `#${i + 1}`);
+        const effData = history.map(h => h.efficiency);
+
+        fillRateChart = new Chart(fillCtx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Taux de remplissage (%)',
+                    data: effData,
+                    borderColor: '#00f0ff',
+                    backgroundColor: 'rgba(0, 240, 255, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#00f0ff',
+                    pointBorderColor: '#00f0ff',
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                },
+                scales: {
+                    y: {
+                        min: 0, max: 100,
+                        grid: { color: 'rgba(100,200,255,0.05)' },
+                        ticks: { font: { family: "'JetBrains Mono'" } },
+                    },
+                    x: {
+                        grid: { color: 'rgba(100,200,255,0.05)' },
+                        ticks: { font: { family: "'JetBrains Mono'" } },
+                    },
+                },
+            },
+        });
+
+        // Volume distribution
+        const volCtx = document.getElementById('chart-volume-dist');
+        if (volumeDistChart) volumeDistChart.destroy();
+
+        const totalVol = history.reduce((s, h) => s + h.volume, 0);
+        const totalCap = history.reduce((s, h) => s + h.trucks * TRUCK_VOLUME, 0);
+        const wastedVol = totalCap - totalVol;
+
+        volumeDistChart = new Chart(volCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Volume utilisé', 'Volume libre'],
+                datasets: [{
+                    data: [totalVol, Math.max(0, wastedVol)],
+                    backgroundColor: ['rgba(0, 240, 255, 0.7)', 'rgba(100, 100, 150, 0.2)'],
+                    borderColor: ['rgba(0, 240, 255, 1)', 'rgba(100, 100, 150, 0.4)'],
+                    borderWidth: 2,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            usePointStyle: true,
+                            pointStyleWidth: 12,
+                            font: { family: "'Rajdhani'", size: 13 },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    /* ═══════════════════════════════════════════
+       AI MODAL
+       ═══════════════════════════════════════════ */
+    function showAIModal() {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('ai-modal');
+            const progress = document.getElementById('ai-progress-fill');
+            const steps = document.querySelectorAll('.ai-step');
+
+            modal.classList.add('active');
+            progress.style.width = '0%';
+            steps.forEach(s => { s.classList.remove('active', 'done'); });
+
+            const timings = [
+                { step: 0, progress: '15%', delay: 300 },
+                { step: 0, progress: '25%', delay: 800, done: true },
+                { step: 1, progress: '40%', delay: 1200 },
+                { step: 1, progress: '55%', delay: 1800, done: true },
+                { step: 2, progress: '70%', delay: 2200 },
+                { step: 2, progress: '85%', delay: 2800, done: true },
+                { step: 3, progress: '92%', delay: 3200 },
+                { step: 3, progress: '100%', delay: 3800, done: true },
+            ];
+
+            timings.forEach(t => {
+                setTimeout(() => {
+                    progress.style.width = t.progress;
+                    const stepEl = steps[t.step];
+                    if (t.done) {
+                        stepEl.classList.remove('active');
+                        stepEl.classList.add('done');
+                        stepEl.querySelector('.ai-step-icon').innerHTML = '&#10003;';
+                    } else {
+                        stepEl.classList.add('active');
+                    }
+                }, t.delay);
+            });
+
+            setTimeout(resolve, 4200);
+        });
+    }
+
+    function hideAIModal() {
+        document.getElementById('ai-modal').classList.remove('active');
+        document.querySelectorAll('.ai-step').forEach((s, i) => {
+            s.classList.remove('active', 'done');
+            s.querySelector('.ai-step-icon').innerHTML = i + 1;
+        });
+    }
+
+    /* ═══════════════════════════════════════════
+       UTILITIES
+       ═══════════════════════════════════════════ */
+    function animateCounters() {
+        document.querySelectorAll('.stat-value[data-count]').forEach(el => {
+            const target = parseFloat(el.dataset.count);
+            const suffix = el.dataset.suffix || '';
+            const isFloat = String(target).includes('.');
+            const duration = 1200;
+            const startTime = performance.now();
+
+            function tick(now) {
+                const elapsed = now - startTime;
+                const t = Math.min(elapsed / duration, 1);
+                const ease = 1 - Math.pow(1 - t, 3);
+                const current = target * ease;
+
+                el.textContent = (isFloat ? current.toFixed(1) : Math.round(current)) + suffix;
+
+                if (t < 1) requestAnimationFrame(tick);
+            }
+
+            requestAnimationFrame(tick);
+        });
+    }
+
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+
+        const icons = { success: '&#10003;', error: '&#10007;', info: '&#8505;' };
+        const colors = { success: 'var(--success)', error: 'var(--danger)', info: 'var(--primary)' };
+
+        toast.innerHTML = `<span style="color:${colors[type]};font-size:18px;">${icons[type]}</span> ${message}`;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.animation = 'toastOut 0.3s ease-in forwards';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    }
+    </script>
+</body>
+</html>
