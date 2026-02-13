@@ -16,6 +16,13 @@ export function DemoLoader() {
       "BOX-040": 2, "BOX-041": 3, "PLT-030": 2,
     };
 
+    // References with orientation constraints
+    const ORIENTATION_REFS: Record<string, 'longueur' | 'largeur'> = {
+      "PLT-030": "longueur",
+      "PLT-031": "largeur",
+      "PNL-001": "longueur",
+    };
+
     const products: Product[] = DEMO_REFS.map((ref, i) => {
       const l = +(Math.random() * 3 + 0.5).toFixed(2);
       const w = +(Math.random() * 1.5 + 0.3).toFixed(2);
@@ -31,6 +38,7 @@ export function DemoLoader() {
         hauteur: h,
         volume: +(l * w * h).toFixed(4),
         ...(stackLevels ? { stackable: true, maxStackLevels: stackLevels } : {}),
+        ...(ORIENTATION_REFS[ref] ? { orientationConstraint: ORIENTATION_REFS[ref] } : {}),
       };
     });
 

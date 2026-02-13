@@ -66,6 +66,14 @@ function getOptionalInt(row: Record<string, unknown>, keys: string[], mapping: C
   return isNaN(val) ? fallback : val;
 }
 
+function getOrientation(row: Record<string, unknown>, keys: string[], mapping: ColumnMapping | undefined): 'longueur' | 'largeur' | undefined {
+  if (!mapping || mapping.orientation === undefined) return undefined;
+  const val = String(row[keys[mapping.orientation]] ?? "").toLowerCase().trim();
+  if (["longueur", "long", "l", "length"].includes(val)) return "longueur";
+  if (["largeur", "larg", "w", "width"].includes(val)) return "largeur";
+  return undefined;
+}
+
 // ---------------------
 // Catalogue import
 // ---------------------
@@ -91,6 +99,7 @@ export function parseExcelFile(buffer: ArrayBuffer, mapping?: ColumnMapping): Pr
       const hauteur = getNumber(row, keys, mapping, "hauteur", 4, 1);
       const stackable = getBool(row, keys, mapping, "empilable");
       const maxStackLevels = getOptionalInt(row, keys, mapping, "maxNiveaux", 2);
+      const orientationConstraint = getOrientation(row, keys, mapping);
 
       const product: Product = {
         reference,
@@ -102,6 +111,7 @@ export function parseExcelFile(buffer: ArrayBuffer, mapping?: ColumnMapping): Pr
       };
       if (stackable !== undefined) product.stackable = stackable;
       if (stackable && maxStackLevels !== undefined) product.maxStackLevels = maxStackLevels;
+      if (orientationConstraint) product.orientationConstraint = orientationConstraint;
 
       return product;
     })

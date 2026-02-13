@@ -41,7 +41,7 @@ export function ProductTable() {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
-              {["Référence", "Poids (kg)", "Longueur (m)", "Largeur (m)", "Hauteur (m)", "Volume (m³)", "Empilable", "Niveaux"].map(
+              {["Référence", "Poids (kg)", "Longueur (m)", "Largeur (m)", "Hauteur (m)", "Volume (m³)", "Empilable", "Niveaux", "Orientation"].map(
                 (header) => (
                   <th
                     key={header}
@@ -119,6 +119,21 @@ export function ProductTable() {
                   ) : (
                     <span className="text-text-dim text-xs">—</span>
                   )}
+                </td>
+                <td className="px-[18px] py-3 text-center">
+                  <select
+                    value={item.orientationConstraint ?? ""}
+                    onChange={(e) =>
+                      updateProduct(item.reference, {
+                        orientationConstraint: (e.target.value || undefined) as 'longueur' | 'largeur' | undefined,
+                      })
+                    }
+                    className="bg-bg-card border border-glass-border rounded px-2 py-1 text-xs font-[family-name:var(--font-mono)] text-text-primary outline-none focus:border-primary-cyan cursor-pointer"
+                  >
+                    <option value="">Libre</option>
+                    <option value="longueur">Longueur</option>
+                    <option value="largeur">Largeur</option>
+                  </select>
                 </td>
               </tr>
             ))}

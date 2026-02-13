@@ -8,6 +8,7 @@ export interface Product {
   volume: number;     // m³
   stackable?: boolean;       // peut-on empiler sur lui-même ?
   maxStackLevels?: number;   // nombre max de niveaux (2 = sol + 1 dessus, défaut 2)
+  orientationConstraint?: 'longueur' | 'largeur';  // forcer l'orientation dans le camion (libre si non défini)
 }
 
 export interface OrderItem extends Product {

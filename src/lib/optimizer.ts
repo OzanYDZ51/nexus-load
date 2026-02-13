@@ -76,7 +76,7 @@ function getStackLevel(truck: TruckLoad, support: PlacedItem): number {
 }
 
 function tryPlace(truck: TruckLoad, item: PackItem): boolean {
-  const orientations: Orientation[] = [
+  const allOrientations: Orientation[] = [
     { l: item.longueur, w: item.largeur, h: item.hauteur },
     { l: item.largeur, w: item.longueur, h: item.hauteur },
     { l: item.longueur, w: item.hauteur, h: item.largeur },
@@ -84,6 +84,17 @@ function tryPlace(truck: TruckLoad, item: PackItem): boolean {
     { l: item.largeur, w: item.hauteur, h: item.longueur },
     { l: item.hauteur, w: item.longueur, h: item.largeur },
   ];
+
+  // Filtrer les orientations selon la contrainte
+  // "longueur" → la longueur du produit doit aller le long du camion (axe X = orient.l)
+  // "largeur" → la longueur du produit doit aller en travers du camion (axe Y = orient.w)
+  const orientations = item.orientationConstraint
+    ? allOrientations.filter((o) =>
+        item.orientationConstraint === "longueur"
+          ? Math.abs(o.l - item.longueur) < 0.001
+          : Math.abs(o.w - item.longueur) < 0.001
+      )
+    : allOrientations;
 
   const sortedPoints = [...truck.availablePoints].sort((a, b) => {
     if (Math.abs(a.z - b.z) > 0.01) return a.z - b.z;
@@ -194,6 +205,7 @@ export function binPack3D(orderItems: OrderItem[]): TruckLoad[] {
         volume: orderItem.volume,
         stackable: orderItem.stackable,
         maxStackLevels: orderItem.maxStackLevels,
+        orientationConstraint: orderItem.orientationConstraint,
         color: colorMap[orderItem.reference],
       });
     }
