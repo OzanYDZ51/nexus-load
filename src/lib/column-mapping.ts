@@ -6,7 +6,9 @@ export type MappableField =
   | "poids"
   | "longueur"
   | "largeur"
-  | "hauteur";
+  | "hauteur"
+  | "empilable"
+  | "maxNiveaux";
 
 export type ColumnMapping = Partial<Record<MappableField, number>>;
 
@@ -26,6 +28,8 @@ const FIELD_PATTERNS: Record<MappableField, string[]> = {
   longueur: ["longueur", "length", "long", "long.", "l (m)", "l(m)"],
   largeur: ["largeur", "width", "larg", "larg.", "w (m)", "w(m)", "la (m)"],
   hauteur: ["hauteur", "height", "haut", "haut.", "h (m)", "h(m)"],
+  empilable: ["empilable", "stackable", "stack"],
+  maxNiveaux: ["niveaux", "levels", "max stack", "étages", "max niveaux"],
 };
 
 function scoreMatch(header: string, patterns: string[]): number {
@@ -116,6 +120,8 @@ export const FIELD_LABELS: Record<MappableField, string> = {
   longueur: "Longueur (m)",
   largeur: "Largeur (m)",
   hauteur: "Hauteur (m)",
+  empilable: "Empilable",
+  maxNiveaux: "Niveaux max",
 };
 
 export const CATALOGUE_REQUIRED: MappableField[] = [

@@ -6,6 +6,7 @@ interface NexusState {
   // Catalog
   catalog: Product[];
   setCatalog: (products: Product[]) => void;
+  updateProduct: (reference: string, updates: Partial<Product>) => void;
   clearCatalog: () => void;
 
   // Order
@@ -35,6 +36,12 @@ export const useNexusStore = create<NexusState>()(
       // Catalog
       catalog: [],
       setCatalog: (products) => set({ catalog: products }),
+      updateProduct: (reference, updates) => {
+        const newCatalog = get().catalog.map((p) =>
+          p.reference === reference ? { ...p, ...updates } : p
+        );
+        set({ catalog: newCatalog });
+      },
       clearCatalog: () => set({ catalog: [], order: [], optimizationResults: null }),
 
       // Order

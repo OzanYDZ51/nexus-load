@@ -33,6 +33,48 @@ function boxesOverlap(
   );
 }
 
+/**
+ * Find the support item directly below a given point.
+ * Returns the placed item whose top face matches point.z and whose
+ * XY footprint covers the new item's base sufficiently.
+ */
+function findSupport(
+  truck: TruckLoad,
+  point: Point,
+  orient: Orientation
+): PlacedItem | null {
+  for (const placed of truck.items) {
+    const topZ = placed.position.z + placed.dims.h;
+    if (Math.abs(topZ - point.z) > 0.02) continue;
+
+    // Check XY overlap: support must cover at least 80% of the new item's base
+    const overlapX = Math.max(
+      0,
+      Math.min(point.x + orient.l, placed.position.x + placed.dims.l) -
+        Math.max(point.x, placed.position.x)
+    );
+    const overlapY = Math.max(
+      0,
+      Math.min(point.y + orient.w, placed.position.y + placed.dims.w) -
+        Math.max(point.y, placed.position.y)
+    );
+    const overlapArea = overlapX * overlapY;
+    const itemArea = orient.l * orient.w;
+
+    if (itemArea > 0 && overlapArea / itemArea >= 0.8) {
+      return placed;
+    }
+  }
+  return null;
+}
+
+/**
+ * Count the stack level by walking down the chain of supports.
+ */
+function getStackLevel(truck: TruckLoad, support: PlacedItem): number {
+  return support.stackLevel + 1;
+}
+
 function tryPlace(truck: TruckLoad, item: PackItem): boolean {
   const orientations: Orientation[] = [
     { l: item.longueur, w: item.largeur, h: item.hauteur },
@@ -55,6 +97,26 @@ function tryPlace(truck: TruckLoad, item: PackItem): boolean {
       if (point.y + orient.w > TRUCK.width + 0.01) continue;
       if (point.z + orient.h > TRUCK.height + 0.01) continue;
 
+      // Stacking validation for elevated points
+      let stackLevel = 0;
+      if (point.z > 0.01) {
+        const support = findSupport(truck, point, orient);
+        if (!support) continue; // No support below — skip
+
+        // Check stacking rules: both must be stackable, same reference
+        if (
+          !support.stackable ||
+          !item.stackable ||
+          support.reference !== item.reference
+        ) {
+          continue; // Not stackable or different reference — skip elevated point
+        }
+
+        stackLevel = getStackLevel(truck, support);
+        const maxLevels = support.maxStackLevels ?? 2;
+        if (stackLevel >= maxLevels) continue; // Stack limit reached
+      }
+
       let overlap = false;
       for (const placed of truck.items) {
         if (boxesOverlap(point, orient, placed.position, placed.dims)) {
@@ -68,6 +130,7 @@ function tryPlace(truck: TruckLoad, item: PackItem): boolean {
           ...item,
           position: { ...point },
           dims: { ...orient },
+          stackLevel,
         };
         truck.items.push(placedItem);
         truck.currentWeight += item.poids;
@@ -129,6 +192,8 @@ export function binPack3D(orderItems: OrderItem[]): TruckLoad[] {
         hauteur: orderItem.hauteur,
         poids: orderItem.poids,
         volume: orderItem.volume,
+        stackable: orderItem.stackable,
+        maxStackLevels: orderItem.maxStackLevels,
         color: colorMap[orderItem.reference],
       });
     }
@@ -163,6 +228,7 @@ export function binPack3D(orderItems: OrderItem[]): TruckLoad[] {
           position: { x: 0, y: 0, z: 0 },
           dims: { l: item.longueur, w: item.largeur, h: item.hauteur },
           color: item.color,
+          stackLevel: 0,
         });
         newTruck.currentWeight += item.poids;
         trucks.push(newTruck);

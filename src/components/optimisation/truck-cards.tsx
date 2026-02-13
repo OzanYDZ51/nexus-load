@@ -68,7 +68,7 @@ export function TruckCards() {
           // Group items by reference
           const itemCounts: Record<
             string,
-            { count: number; color: number; volume: number; weight: number }
+            { count: number; color: number; volume: number; weight: number; maxStack: number }
           > = {};
           for (const it of truck.items) {
             if (!itemCounts[it.reference]) {
@@ -77,11 +77,15 @@ export function TruckCards() {
                 color: it.color,
                 volume: 0,
                 weight: 0,
+                maxStack: 0,
               };
             }
             itemCounts[it.reference].count++;
             itemCounts[it.reference].volume += it.volume;
             itemCounts[it.reference].weight += it.poids;
+            if (it.stackLevel > itemCounts[it.reference].maxStack) {
+              itemCounts[it.reference].maxStack = it.stackLevel;
+            }
           }
 
           return (
@@ -144,6 +148,11 @@ export function TruckCards() {
                         style={{ background: hexToString(data.color) }}
                       />
                       {ref} ×{data.count}
+                      {data.maxStack > 0 && (
+                        <span className="ml-1.5 px-1.5 py-0.5 rounded bg-primary-dim text-primary-cyan text-[10px] font-bold">
+                          ↕{data.maxStack + 1}
+                        </span>
+                      )}
                     </div>
                     <div className="text-text-dim font-[family-name:var(--font-mono)] text-xs">
                       {data.volume.toFixed(2)}m³ / {data.weight.toFixed(0)}kg

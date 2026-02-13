@@ -52,6 +52,20 @@ function getNumber(row: Record<string, unknown>, keys: string[], mapping: Column
   return parseFloat(String(row[keys[positionalIndex]])) || fallback;
 }
 
+function getBool(row: Record<string, unknown>, keys: string[], mapping: ColumnMapping | undefined, field: keyof ColumnMapping): boolean | undefined {
+  if (!mapping || mapping[field] === undefined) return undefined;
+  const val = String(row[keys[mapping[field]!]] ?? "").toLowerCase().trim();
+  if (["oui", "yes", "1", "true", "vrai", "x"].includes(val)) return true;
+  if (["non", "no", "0", "false", "faux", ""].includes(val)) return false;
+  return undefined;
+}
+
+function getOptionalInt(row: Record<string, unknown>, keys: string[], mapping: ColumnMapping | undefined, field: keyof ColumnMapping, fallback: number): number | undefined {
+  if (!mapping || mapping[field] === undefined) return undefined;
+  const val = parseInt(String(row[keys[mapping[field]!]]));
+  return isNaN(val) ? fallback : val;
+}
+
 // ---------------------
 // Catalogue import
 // ---------------------
@@ -75,8 +89,10 @@ export function parseExcelFile(buffer: ArrayBuffer, mapping?: ColumnMapping): Pr
       const longueur = getNumber(row, keys, mapping, "longueur", 2);
       const largeur = getNumber(row, keys, mapping, "largeur", 3);
       const hauteur = getNumber(row, keys, mapping, "hauteur", 4, 1);
+      const stackable = getBool(row, keys, mapping, "empilable");
+      const maxStackLevels = getOptionalInt(row, keys, mapping, "maxNiveaux", 2);
 
-      return {
+      const product: Product = {
         reference,
         poids,
         longueur,
@@ -84,6 +100,10 @@ export function parseExcelFile(buffer: ArrayBuffer, mapping?: ColumnMapping): Pr
         hauteur,
         volume: +(longueur * largeur * hauteur).toFixed(4),
       };
+      if (stackable !== undefined) product.stackable = stackable;
+      if (stackable && maxStackLevels !== undefined) product.maxStackLevels = maxStackLevels;
+
+      return product;
     })
     .filter((item) => item.reference.length > 0);
 

@@ -10,11 +10,18 @@ export function DemoLoader() {
   const setCatalog = useNexusStore((s) => s.setCatalog);
 
   function loadDemo() {
+    // References that are physically stackable (~30%)
+    const STACKABLE_REFS: Record<string, number> = {
+      "BLK-010": 3, "BLK-011": 2, "BLK-012": 2,
+      "BOX-040": 2, "BOX-041": 3, "PLT-030": 2,
+    };
+
     const products: Product[] = DEMO_REFS.map((ref, i) => {
       const l = +(Math.random() * 3 + 0.5).toFixed(2);
       const w = +(Math.random() * 1.5 + 0.3).toFixed(2);
       const h = +(Math.random() * 1.5 + 0.2).toFixed(2);
       const p = +(Math.random() * 800 + 50).toFixed(1);
+      const stackLevels = STACKABLE_REFS[ref];
       return {
         reference: ref,
         name: DEMO_NAMES[i],
@@ -23,6 +30,7 @@ export function DemoLoader() {
         largeur: w,
         hauteur: h,
         volume: +(l * w * h).toFixed(4),
+        ...(stackLevels ? { stackable: true, maxStackLevels: stackLevels } : {}),
       };
     });
 

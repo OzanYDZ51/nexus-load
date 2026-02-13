@@ -6,6 +6,8 @@ export interface Product {
   largeur: number;    // m
   hauteur: number;    // m
   volume: number;     // m³
+  stackable?: boolean;       // peut-on empiler sur lui-même ?
+  maxStackLevels?: number;   // nombre max de niveaux (2 = sol + 1 dessus, défaut 2)
 }
 
 export interface OrderItem extends Product {
@@ -16,6 +18,7 @@ export interface PlacedItem extends Product {
   position: { x: number; y: number; z: number };
   dims: { l: number; w: number; h: number };
   color: number;
+  stackLevel: number;  // 0 = sol, 1 = premier étage, etc.
 }
 
 export interface TruckLoad {

@@ -29,6 +29,8 @@ const ALL_FIELDS: MappableField[] = [
   "longueur",
   "largeur",
   "hauteur",
+  "empilable",
+  "maxNiveaux",
 ];
 
 export function ColumnMappingModal({

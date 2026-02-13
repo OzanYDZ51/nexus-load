@@ -97,7 +97,7 @@ function LoadedItem({
       <meshPhongMaterial
         color={item.color}
         transparent
-        opacity={0.85}
+        opacity={item.stackLevel === 0 ? 0.85 : item.stackLevel === 1 ? 0.70 : item.stackLevel === 2 ? 0.55 : 0.40}
         shininess={80}
         emissive={item.color}
         emissiveIntensity={0.1}
@@ -112,7 +112,7 @@ function LoadedItem({
             ),
           ]}
         />
-        <lineBasicMaterial color={0xffffff} transparent opacity={0.2} />
+        <lineBasicMaterial color={0xffffff} transparent opacity={0.15 + 0.05 * (item.stackLevel ?? 0)} />
       </lineSegments>
     </mesh>
   );
