@@ -1,7 +1,55 @@
 import * as XLSX from "xlsx";
 import type { Product, OrderItem } from "./types";
+import type { ColumnMapping, RawExcelData } from "./column-mapping";
 
-export function parseExcelFile(buffer: ArrayBuffer): Product[] {
+/**
+ * Read raw Excel data: headers + rows for preview and mapping.
+ */
+export function readRawExcel(buffer: ArrayBuffer, fileName: string): RawExcelData {
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const data = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    defval: "",
+  });
+
+  if (data.length === 0) {
+    throw new Error("Le fichier est vide");
+  }
+
+  const headers = (data[0] as unknown[]).map((h) => String(h).trim());
+  const rows = data.slice(1).filter((row) => {
+    const r = row as unknown[];
+    return r.some((cell) => String(cell).trim() !== "");
+  });
+  const previewRows = rows.slice(0, 3);
+
+  return { headers, rows: rows as unknown[][], previewRows: previewRows as unknown[][], fileName, buffer };
+}
+
+// ---------------------
+// Helpers to read row values via mapping or positional fallback
+// ---------------------
+
+function getString(row: Record<string, unknown>, keys: string[], mapping: ColumnMapping | undefined, field: keyof ColumnMapping, positionalIndex: number): string {
+  if (mapping && mapping[field] !== undefined) {
+    return String(row[keys[mapping[field]!]] ?? "").trim();
+  }
+  return String(row[keys[positionalIndex]] ?? "").trim();
+}
+
+function getNumber(row: Record<string, unknown>, keys: string[], mapping: ColumnMapping | undefined, field: keyof ColumnMapping, positionalIndex: number, fallback = 0): number {
+  if (mapping && mapping[field] !== undefined) {
+    return parseFloat(String(row[keys[mapping[field]!]])) || fallback;
+  }
+  return parseFloat(String(row[keys[positionalIndex]])) || fallback;
+}
+
+// ---------------------
+// Catalogue import
+// ---------------------
+
+export function parseExcelFile(buffer: ArrayBuffer, mapping?: ColumnMapping): Product[] {
   const workbook = XLSX.read(buffer, { type: "array" });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
@@ -15,11 +63,11 @@ export function parseExcelFile(buffer: ArrayBuffer): Product[] {
   const products: Product[] = data
     .map((row) => {
       const keys = Object.keys(row);
-      const reference = String(row[keys[0]] || "").trim();
-      const poids = parseFloat(String(row[keys[1]])) || 0;
-      const longueur = parseFloat(String(row[keys[2]])) || 0;
-      const largeur = parseFloat(String(row[keys[3]])) || 0;
-      const hauteur = parseFloat(String(row[keys[4]])) || 1;
+      const reference = getString(row, keys, mapping, "reference", 0);
+      const poids = getNumber(row, keys, mapping, "poids", 1);
+      const longueur = getNumber(row, keys, mapping, "longueur", 2);
+      const largeur = getNumber(row, keys, mapping, "largeur", 3);
+      const hauteur = getNumber(row, keys, mapping, "hauteur", 4, 1);
 
       return {
         reference,
@@ -35,6 +83,10 @@ export function parseExcelFile(buffer: ArrayBuffer): Product[] {
   return products;
 }
 
+// ---------------------
+// Order import
+// ---------------------
+
 export interface OrderParseResult {
   items: OrderItem[];
   matched: number;
@@ -43,7 +95,8 @@ export interface OrderParseResult {
 
 export function parseOrderFile(
   buffer: ArrayBuffer,
-  catalog: Product[]
+  catalog: Product[],
+  mapping?: ColumnMapping
 ): OrderParseResult {
   const workbook = XLSX.read(buffer, { type: "array" });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -55,19 +108,22 @@ export function parseOrderFile(
     throw new Error("Le fichier est vide");
   }
 
+  // With explicit mapping, always use it
+  if (mapping) {
+    return parseWithMapping(data, catalog, mapping);
+  }
+
+  // Fallback: legacy positional logic
   const columnCount = Object.keys(data[0]).length;
   const hasCatalog = catalog.length > 0;
   const hasFullData = columnCount >= 6;
 
-  // If no catalog and file has full product data (>=6 columns):
-  // Reference, Quantity, Poids, Longueur, Largeur, Hauteur
-  if (!hasCatalog && hasFullData) {
+  if (hasFullData) {
     return parseFullOrderFile(data);
   }
 
-  // If file has full data, prefer using it directly (even with catalog)
-  if (hasFullData) {
-    return parseFullOrderFile(data);
+  if (columnCount === 5 && !hasCatalog) {
+    return parseCatalogAsOrder(data);
   }
 
   // Simple mode: match against catalog (Reference + Quantity)
@@ -104,6 +160,125 @@ export function parseOrderFile(
   }
 
   return { items, matched: items.length, notFound };
+}
+
+/**
+ * Parse order data using explicit column mapping.
+ */
+function parseWithMapping(
+  data: Record<string, unknown>[],
+  catalog: Product[],
+  mapping: ColumnMapping
+): OrderParseResult {
+  const hasCatalog = catalog.length > 0;
+  const hasPhysicalFields =
+    mapping.poids !== undefined &&
+    mapping.longueur !== undefined &&
+    mapping.largeur !== undefined &&
+    mapping.hauteur !== undefined;
+
+  // Build catalog lookup
+  const catalogMap = new Map<string, Product>();
+  for (const p of catalog) {
+    catalogMap.set(p.reference.toLowerCase(), p);
+  }
+
+  const items: OrderItem[] = [];
+  const notFound: string[] = [];
+
+  for (const row of data) {
+    const keys = Object.keys(row);
+    const reference = getString(row, keys, mapping, "reference", 0);
+    if (!reference) continue;
+
+    const qty = mapping.quantite !== undefined
+      ? Math.max(1, parseInt(String(row[keys[mapping.quantite]])) || 1)
+      : 1;
+
+    // If physical fields are mapped, use them directly
+    if (hasPhysicalFields) {
+      const poids = getNumber(row, keys, mapping, "poids", -1);
+      const longueur = getNumber(row, keys, mapping, "longueur", -1);
+      const largeur = getNumber(row, keys, mapping, "largeur", -1);
+      const hauteur = getNumber(row, keys, mapping, "hauteur", -1, 1);
+
+      if (poids === 0 && longueur === 0 && largeur === 0) {
+        notFound.push(reference);
+        continue;
+      }
+
+      const existing = items.find(
+        (i) => i.reference.toLowerCase() === reference.toLowerCase()
+      );
+      if (existing) {
+        existing.qty += qty;
+      } else {
+        items.push({
+          reference,
+          poids,
+          longueur,
+          largeur,
+          hauteur,
+          volume: +(longueur * largeur * hauteur).toFixed(4),
+          qty,
+        });
+      }
+    } else if (hasCatalog) {
+      // Match against catalog
+      const product = catalogMap.get(reference.toLowerCase());
+      if (product) {
+        const existing = items.find(
+          (i) => i.reference.toLowerCase() === reference.toLowerCase()
+        );
+        if (existing) {
+          existing.qty += qty;
+        } else {
+          items.push({ ...product, qty });
+        }
+      } else {
+        if (!notFound.includes(reference)) {
+          notFound.push(reference);
+        }
+      }
+    }
+  }
+
+  return { items, matched: items.length, notFound };
+}
+
+// ---------------------
+// Legacy positional parsers (kept for backward compatibility without mapping)
+// ---------------------
+
+function parseCatalogAsOrder(
+  data: Record<string, unknown>[]
+): OrderParseResult {
+  const items: OrderItem[] = [];
+
+  for (const row of data) {
+    const keys = Object.keys(row);
+    const reference = String(row[keys[0]] || "").trim();
+    if (!reference) continue;
+
+    const poids = parseFloat(String(row[keys[1]])) || 0;
+    const longueur = parseFloat(String(row[keys[2]])) || 0;
+    const largeur = parseFloat(String(row[keys[3]])) || 0;
+    const hauteur = parseFloat(String(row[keys[4]])) || 1;
+
+    if (poids === 0 && longueur === 0 && largeur === 0) continue;
+
+    items.push({
+      reference,
+      poids,
+      longueur,
+      largeur,
+      hauteur,
+      volume: +(longueur * largeur * hauteur).toFixed(4),
+      qty: 1,
+    });
+  }
+
+  return { items, matched: items.length, notFound: [] };
 }
 
 function parseFullOrderFile(
