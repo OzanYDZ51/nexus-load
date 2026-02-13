@@ -5,6 +5,14 @@ import type { ColumnMapping, RawExcelData } from "./column-mapping";
 /**
  * Read raw Excel data: headers + rows for preview and mapping.
  */
+/** Sanitize XLSX cell values (Date objects, etc.) into primitives */
+function sanitizeCell(v: unknown): string | number | boolean {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return v;
+  if (v instanceof Date) return v.toISOString().split("T")[0];
+  return String(v);
+}
+
 export function readRawExcel(buffer: ArrayBuffer, fileName: string): RawExcelData {
   const workbook = XLSX.read(buffer, { type: "array" });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -18,13 +26,12 @@ export function readRawExcel(buffer: ArrayBuffer, fileName: string): RawExcelDat
   }
 
   const headers = (data[0] as unknown[]).map((h) => String(h).trim());
-  const rows = data.slice(1).filter((row) => {
-    const r = row as unknown[];
-    return r.some((cell) => String(cell).trim() !== "");
-  });
+  const rows = data.slice(1)
+    .map((row) => (row as unknown[]).map(sanitizeCell))
+    .filter((r) => r.some((cell) => String(cell).trim() !== ""));
   const previewRows = rows.slice(0, 3);
 
-  return { headers, rows: rows as unknown[][], previewRows: previewRows as unknown[][], fileName, buffer };
+  return { headers, rows, previewRows, fileName, buffer };
 }
 
 // ---------------------
