@@ -56,20 +56,20 @@ export function ResultStats() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
       <StatCard
-        icon="\uD83D\uDE9A"
+        icon="🚚"
         value={trucks.length}
         label="Camions nécessaires"
       />
-      <StatCard icon="\uD83D\uDCE6" value={totalItems} label="Articles placés" />
+      <StatCard icon="📦" value={totalItems} label="Articles placés" />
       <StatCard
-        icon="\u26A1"
+        icon="⚡"
         value={avgFill}
         suffix="%"
         label="Taux d'optimisation"
         decimals={0}
       />
       <StatCard
-        icon="\u2696"
+        icon="⚖"
         value={totalWeight / 1000}
         suffix="t"
         label="Poids total"

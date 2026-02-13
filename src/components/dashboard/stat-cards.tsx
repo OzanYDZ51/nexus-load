@@ -15,28 +15,28 @@ export function StatCards() {
 
   const stats = [
     {
-      icon: "\uD83D\uDCE6",
+      icon: "📦",
       value: totalOrders.toString(),
       label: "Commandes traitées",
       bg: "bg-primary-dim",
       color: "text-primary-cyan",
     },
     {
-      icon: "\uD83D\uDE9A",
+      icon: "🚚",
       value: totalTrucks.toString(),
       label: "Camions utilisés",
       bg: "bg-secondary-dim",
       color: "text-secondary-purple",
     },
     {
-      icon: "\u26A1",
+      icon: "⚡",
       value: avgEff.toFixed(1) + "%",
       label: "Efficacité moyenne",
       bg: "bg-[rgba(0,255,136,0.15)]",
       color: "text-success",
     },
     {
-      icon: "\uD83D\uDCC8",
+      icon: "📈",
       value: totalVol.toFixed(1),
       label: "m³ optimisés",
       bg: "bg-accent-dim",
