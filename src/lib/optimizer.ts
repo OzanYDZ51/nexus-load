@@ -176,6 +176,21 @@ function tryPlace(truck: TruckLoad, item: PackItem): boolean {
           }
         }
 
+        // Fix #4: Clean up dead elevated points that no longer sit on any item's top face
+        truck.availablePoints = truck.availablePoints.filter((p) => {
+          if (p.z < 0.01) return true;
+          return truck.items.some((pi) => {
+            const topZ = pi.position.z + pi.dims.h;
+            if (Math.abs(topZ - p.z) > 0.02) return false;
+            return (
+              p.x >= pi.position.x - 0.01 &&
+              p.x <= pi.position.x + pi.dims.l + 0.01 &&
+              p.y >= pi.position.y - 0.01 &&
+              p.y <= pi.position.y + pi.dims.w + 0.01
+            );
+          });
+        });
+
         return true;
       }
     }
@@ -211,14 +226,31 @@ export function binPack3D(orderItems: OrderItem[]): TruckLoad[] {
     }
   }
 
-  items.sort((a, b) => b.volume - a.volume);
+  // Fix #1: Multi-criteria sort — stackable first, group by reference, then volume desc
+  items.sort((a, b) => {
+    if (a.stackable !== b.stackable) return a.stackable ? -1 : 1;
+    if (a.reference !== b.reference) return a.reference < b.reference ? -1 : 1;
+    return b.volume - a.volume;
+  });
 
   const trucks: TruckLoad[] = [];
 
   for (const item of items) {
     let placed = false;
 
-    for (const truck of trucks) {
+    // Fix #2: For stackable items, try trucks with same reference first
+    const truckOrder = item.stackable
+      ? [
+          ...trucks.filter((t) =>
+            t.items.some((pi) => pi.reference === item.reference)
+          ),
+          ...trucks.filter(
+            (t) => !t.items.some((pi) => pi.reference === item.reference)
+          ),
+        ]
+      : trucks;
+
+    for (const truck of truckOrder) {
       if (truck.currentWeight + item.poids > TRUCK.maxWeight) continue;
       if (tryPlace(truck, item)) {
         placed = true;
@@ -235,18 +267,94 @@ export function binPack3D(orderItems: OrderItem[]): TruckLoad[] {
       if (tryPlace(newTruck, item)) {
         trucks.push(newTruck);
       } else {
-        newTruck.items.push({
-          ...item,
-          position: { x: 0, y: 0, z: 0 },
-          dims: { l: item.longueur, w: item.largeur, h: item.hauteur },
-          color: item.color,
-          stackLevel: 0,
-        });
-        newTruck.currentWeight += item.poids;
-        trucks.push(newTruck);
+        // Fix #3: Try all 6 orientations ignoring orientation constraint
+        const fallbackOrientations: Orientation[] = [
+          { l: item.longueur, w: item.largeur, h: item.hauteur },
+          { l: item.largeur, w: item.longueur, h: item.hauteur },
+          { l: item.longueur, w: item.hauteur, h: item.largeur },
+          { l: item.hauteur, w: item.largeur, h: item.longueur },
+          { l: item.largeur, w: item.hauteur, h: item.longueur },
+          { l: item.hauteur, w: item.longueur, h: item.largeur },
+        ];
+        let forcePlaced = false;
+        for (const orient of fallbackOrientations) {
+          if (
+            orient.l <= TRUCK.length + 0.01 &&
+            orient.w <= TRUCK.width + 0.01 &&
+            orient.h <= TRUCK.height + 0.01
+          ) {
+            newTruck.items.push({
+              ...item,
+              position: { x: 0, y: 0, z: 0 },
+              dims: orient,
+              color: item.color,
+              stackLevel: 0,
+            });
+            newTruck.currentWeight += item.poids;
+            newTruck.availablePoints = [
+              { x: orient.l, y: 0, z: 0 },
+              { x: 0, y: orient.w, z: 0 },
+              { x: 0, y: 0, z: orient.h },
+            ];
+            trucks.push(newTruck);
+            forcePlaced = true;
+            break;
+          }
+        }
+        if (!forcePlaced) {
+          console.error(
+            `Item "${item.reference}" (${item.longueur}x${item.largeur}x${item.hauteur}) exceeds truck dimensions — skipped.`
+          );
+        }
       }
     }
   }
 
-  return trucks;
+  // Fix #5: Consolidation — move items from last truck to earlier ones
+  return consolidateTrucks(trucks);
+}
+
+/**
+ * Post-processing: try to move items from the last (least-filled) truck
+ * into earlier trucks to minimize truck count.
+ */
+function consolidateTrucks(trucks: TruckLoad[]): TruckLoad[] {
+  if (trucks.length <= 1) return trucks;
+
+  const lastTruck = trucks[trucks.length - 1];
+  // Process from top of stack first (highest stackLevel, then highest z)
+  const sortedItems = [...lastTruck.items].sort((a, b) => {
+    if (a.stackLevel !== b.stackLevel) return b.stackLevel - a.stackLevel;
+    return b.position.z - a.position.z;
+  });
+
+  for (const item of sortedItems) {
+    const packItem: PackItem = {
+      reference: item.reference,
+      name: item.name,
+      longueur: item.longueur,
+      largeur: item.largeur,
+      hauteur: item.hauteur,
+      poids: item.poids,
+      volume: item.volume,
+      stackable: item.stackable,
+      maxStackLevels: item.maxStackLevels,
+      orientationConstraint: item.orientationConstraint,
+      color: item.color,
+    };
+
+    for (let i = 0; i < trucks.length - 1; i++) {
+      if (trucks[i].currentWeight + item.poids > TRUCK.maxWeight) continue;
+      if (tryPlace(trucks[i], packItem)) {
+        const idx = lastTruck.items.indexOf(item);
+        if (idx > -1) {
+          lastTruck.items.splice(idx, 1);
+          lastTruck.currentWeight -= item.poids;
+        }
+        break;
+      }
+    }
+  }
+
+  return trucks.filter((t) => t.items.length > 0);
 }

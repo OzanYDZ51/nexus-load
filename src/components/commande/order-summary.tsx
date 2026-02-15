@@ -11,8 +11,7 @@ import { AIModal } from "@/components/ai-modal";
 
 export function OrderSummary() {
   const order = useNexusStore((s) => s.order);
-  const setOptimizationResults = useNexusStore((s) => s.setOptimizationResults);
-  const addHistoryEntry = useNexusStore((s) => s.addHistoryEntry);
+  const saveOptimization = useNexusStore((s) => s.saveOptimization);
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
 
@@ -33,7 +32,6 @@ export function OrderSummary() {
 
   const handleModalComplete = useCallback(() => {
     const trucks = binPack3D(order);
-    setOptimizationResults(trucks);
 
     const usedVolume = trucks.reduce(
       (s, t) => s + t.items.reduce((ss, it) => ss + it.volume, 0),
@@ -42,7 +40,7 @@ export function OrderSummary() {
     const avgFill =
       trucks.length > 0 ? (usedVolume / (trucks.length * TRUCK_VOLUME)) * 100 : 0;
 
-    addHistoryEntry({
+    saveOptimization(trucks, {
       id: generateId(),
       date: new Date().toLocaleString("fr-FR"),
       items: totalItems,
@@ -56,8 +54,7 @@ export function OrderSummary() {
     router.push("/optimisation");
   }, [
     order,
-    setOptimizationResults,
-    addHistoryEntry,
+    saveOptimization,
     totalItems,
     totalWeight,
     totalVolume,

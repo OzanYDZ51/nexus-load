@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+model Catalog {
+  id        String   @id @default(cuid())
+  name      String   @default("default") @unique
+  products  Json     // Product[] en JSON
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
+model Order {
+  id           String        @id @default(cuid())
+  items        Json          // OrderItem[] en JSON
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  catalogId    String?
+  catalog      Catalog?      @relation(fields: [catalogId], references: [id], onDelete: SetNull)
+  optimization Optimization?
+}
+
+model Optimization {
+  id        String       @id @default(cuid())
+  trucks    Json         // TruckLoad[] en JSON
+  createdAt DateTime     @default(now())
+  orderId   String       @unique
+  order     Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  historyId String?      @unique
+  history   HistoryEntry? @relation(fields: [historyId], references: [id], onDelete: SetNull)
+}
+
+model HistoryEntry {
+  id           String        @id @default(cuid())
+  date         String
+  items        Int
+  weight       Float
+  volume       Float
+  trucks       Int
+  efficiency   Float
+  createdAt    DateTime      @default(now())
+  optimization Optimization?
+}

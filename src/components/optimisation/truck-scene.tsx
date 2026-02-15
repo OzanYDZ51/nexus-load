@@ -153,9 +153,10 @@ function TruckSceneInner({ truck }: TruckSceneInnerProps) {
 
 interface TruckSceneProps {
   truck: TruckLoad;
+  truckIndex: number;
 }
 
-export function TruckScene({ truck }: TruckSceneProps) {
+export function TruckScene({ truck, truckIndex }: TruckSceneProps) {
   return (
     <Canvas
       camera={{
@@ -170,7 +171,7 @@ export function TruckScene({ truck }: TruckSceneProps) {
       dpr={[1, 2]}
     >
       <fog attach="fog" args={[0x06060f, 20, 80]} />
-      <TruckSceneInner truck={truck} />
+      <TruckSceneInner key={truckIndex} truck={truck} />
     </Canvas>
   );
 }

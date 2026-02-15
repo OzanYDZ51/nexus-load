@@ -1,8 +1,12 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import type { Product, OrderItem, TruckLoad, HistoryEntry } from "./types";
+import { api } from "./api";
 
 interface NexusState {
+  // Hydration
+  isHydrated: boolean;
+  hydrate: () => Promise<void>;
+
   // Catalog
   catalog: Product[];
   setCatalog: (products: Product[]) => void;
@@ -23,71 +27,123 @@ interface NexusState {
   setOptimizationResults: (trucks: TruckLoad[]) => void;
   setCurrentTruckIndex: (index: number) => void;
   clearOptimization: () => void;
+  saveOptimization: (trucks: TruckLoad[], historyEntry: HistoryEntry) => void;
 
-  // History (persisted)
+  // History
   history: HistoryEntry[];
   addHistoryEntry: (entry: HistoryEntry) => void;
   clearHistory: () => void;
 }
 
-export const useNexusStore = create<NexusState>()(
-  persist(
-    (set, get) => ({
-      // Catalog
-      catalog: [],
-      setCatalog: (products) => set({ catalog: products }),
-      updateProduct: (reference, updates) => {
-        const newCatalog = get().catalog.map((p) =>
-          p.reference === reference ? { ...p, ...updates } : p
-        );
-        set({ catalog: newCatalog });
-      },
-      clearCatalog: () => set({ catalog: [], order: [], optimizationResults: null }),
+export const useNexusStore = create<NexusState>()((set, get) => ({
+  // Hydration
+  isHydrated: false,
+  hydrate: async () => {
+    try {
+      const [catalogRes, orderRes, optRes, historyRes] = await Promise.all([
+        api.catalog.load().catch(() => null),
+        api.order.load().catch(() => null),
+        api.optimization.load().catch(() => null),
+        api.history.load().catch(() => []),
+      ]);
 
-      // Order
-      order: [],
-      addItem: (product, qty) => {
-        const order = [...get().order];
-        const existing = order.findIndex((o) => o.reference === product.reference);
-        if (existing >= 0) {
-          order[existing] = { ...order[existing], qty: order[existing].qty + qty };
-        } else {
-          order.push({ ...product, qty });
-        }
-        set({ order });
-      },
-      setOrder: (items) => set({ order: items, optimizationResults: null }),
-      removeItem: (index) => {
-        const order = [...get().order];
-        order.splice(index, 1);
-        set({ order });
-      },
-      updateQty: (index, qty) => {
-        const order = [...get().order];
-        if (order[index]) {
-          order[index] = { ...order[index], qty: Math.max(1, qty) };
-          set({ order });
-        }
-      },
-      clearOrder: () => set({ order: [], optimizationResults: null }),
-
-      // Optimization
-      optimizationResults: null,
-      currentTruckIndex: 0,
-      setOptimizationResults: (trucks) =>
-        set({ optimizationResults: trucks, currentTruckIndex: 0 }),
-      setCurrentTruckIndex: (index) => set({ currentTruckIndex: index }),
-      clearOptimization: () => set({ optimizationResults: null, currentTruckIndex: 0 }),
-
-      // History
-      history: [],
-      addHistoryEntry: (entry) =>
-        set((state) => ({ history: [...state.history, entry] })),
-      clearHistory: () => set({ history: [] }),
-    }),
-    {
-      name: "nexus-storage",
-      partialize: (state) => ({ history: state.history }),
+      set({
+        catalog: catalogRes?.products ?? [],
+        order: orderRes?.items ?? [],
+        optimizationResults: optRes?.trucks ?? null,
+        history: (historyRes as HistoryEntry[]) ?? [],
+        currentTruckIndex: 0,
+        isHydrated: true,
+      });
+    } catch {
+      // If API is unavailable (no DB yet), just mark hydrated so app works
+      set({ isHydrated: true });
     }
-  )
-);
+  },
+
+  // Catalog
+  catalog: [],
+  setCatalog: (products) => {
+    set({ catalog: products });
+    api.catalog.save(products).catch(console.error);
+  },
+  updateProduct: (reference, updates) => {
+    const newCatalog = get().catalog.map((p) =>
+      p.reference === reference ? { ...p, ...updates } : p
+    );
+    set({ catalog: newCatalog });
+    api.catalog.updateProduct(reference, updates).catch(console.error);
+  },
+  clearCatalog: () => {
+    set({ catalog: [], order: [], optimizationResults: null });
+    api.catalog.clear().catch(console.error);
+    api.order.clear().catch(console.error);
+    api.optimization.clear().catch(console.error);
+  },
+
+  // Order
+  order: [],
+  addItem: (product, qty) => {
+    const order = [...get().order];
+    const existing = order.findIndex((o) => o.reference === product.reference);
+    if (existing >= 0) {
+      order[existing] = { ...order[existing], qty: order[existing].qty + qty };
+    } else {
+      order.push({ ...product, qty });
+    }
+    set({ order });
+    api.order.save(order).catch(console.error);
+  },
+  setOrder: (items) => {
+    set({ order: items, optimizationResults: null });
+    api.order.save(items).catch(console.error);
+    api.optimization.clear().catch(console.error);
+  },
+  removeItem: (index) => {
+    const order = [...get().order];
+    order.splice(index, 1);
+    set({ order });
+    api.order.save(order).catch(console.error);
+  },
+  updateQty: (index, qty) => {
+    const order = [...get().order];
+    if (order[index]) {
+      order[index] = { ...order[index], qty: Math.max(1, qty) };
+      set({ order });
+      api.order.save(order).catch(console.error);
+    }
+  },
+  clearOrder: () => {
+    set({ order: [], optimizationResults: null });
+    api.order.clear().catch(console.error);
+    api.optimization.clear().catch(console.error);
+  },
+
+  // Optimization
+  optimizationResults: null,
+  currentTruckIndex: 0,
+  setOptimizationResults: (trucks) =>
+    set({ optimizationResults: trucks, currentTruckIndex: 0 }),
+  setCurrentTruckIndex: (index) => set({ currentTruckIndex: index }),
+  clearOptimization: () => {
+    set({ optimizationResults: null, currentTruckIndex: 0 });
+    api.optimization.clear().catch(console.error);
+  },
+  saveOptimization: (trucks, historyEntry) => {
+    set({
+      optimizationResults: trucks,
+      currentTruckIndex: 0,
+      history: [...get().history, historyEntry],
+    });
+    api.optimization.save(trucks, historyEntry).catch(console.error);
+  },
+
+  // History
+  history: [],
+  addHistoryEntry: (entry) =>
+    set((state) => ({ history: [...state.history, entry] })),
+  clearHistory: () => {
+    set({ history: [] });
+    api.history.clear().catch(console.error);
+  },
+}));

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { Search, Download } from "lucide-react";
 import { useNexusStore } from "@/lib/store";
+import { exportCatalogToExcel } from "@/lib/excel-export";
 
 export function ProductTable() {
   const catalog = useNexusStore((s) => s.catalog);
@@ -30,9 +31,18 @@ export function ProductTable() {
             className="flex-1 bg-transparent border-none text-text-primary font-[family-name:var(--font-body)] text-sm outline-none placeholder:text-text-dim"
           />
         </div>
-        <div className="font-[family-name:var(--font-mono)] text-[13px] text-text-secondary">
-          <span className="text-primary-cyan font-bold">{filtered.length}</span>{" "}
-          produits chargés
+        <div className="flex items-center gap-4">
+          <div className="font-[family-name:var(--font-mono)] text-[13px] text-text-secondary">
+            <span className="text-primary-cyan font-bold">{filtered.length}</span>{" "}
+            produits chargés
+          </div>
+          <button
+            onClick={() => exportCatalogToExcel(catalog)}
+            className="flex items-center gap-2 px-4 py-2 bg-bg-card border border-glass-border rounded-lg text-xs font-[family-name:var(--font-display)] font-bold tracking-[1px] uppercase text-text-secondary hover:text-primary-cyan hover:border-primary-cyan transition-all duration-200"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Exporter Excel
+          </button>
         </div>
       </div>
 

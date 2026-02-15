@@ -24,7 +24,7 @@ export function TruckViewer() {
           VISUALISATION 3D DU CHARGEMENT
         </div>
       </div>
-      <TruckScene truck={truck} />
+      <TruckScene truck={truck} truckIndex={currentIndex} />
     </div>
   );
 }

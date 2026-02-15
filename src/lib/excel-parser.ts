@@ -244,13 +244,17 @@ function parseWithMapping(
         continue;
       }
 
+      const stackable = getBool(row, keys, mapping, "empilable");
+      const maxStackLevels = getOptionalInt(row, keys, mapping, "maxNiveaux", 2);
+      const orientationConstraint = getOrientation(row, keys, mapping);
+
       const existing = items.find(
         (i) => i.reference.toLowerCase() === reference.toLowerCase()
       );
       if (existing) {
         existing.qty += qty;
       } else {
-        items.push({
+        const orderItem: OrderItem = {
           reference,
           poids,
           longueur,
@@ -258,7 +262,11 @@ function parseWithMapping(
           hauteur,
           volume: +(longueur * largeur * hauteur).toFixed(4),
           qty,
-        });
+        };
+        if (stackable !== undefined) orderItem.stackable = stackable;
+        if (stackable && maxStackLevels !== undefined) orderItem.maxStackLevels = maxStackLevels;
+        if (orientationConstraint) orderItem.orientationConstraint = orientationConstraint;
+        items.push(orderItem);
       }
     } else if (hasCatalog) {
       // Match against catalog

@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { ParticlesBackground } from "@/components/particles-background";
 import { Toaster } from "sonner";
+import { HydrationProvider } from "@/components/hydration-provider";
 
 const orbitron = Orbitron({
   variable: "--font-display",
@@ -43,9 +44,11 @@ export default function RootLayout({
         <ParticlesBackground />
         <MobileNav />
         <Sidebar />
-        <main className="ml-0 md:ml-[280px] min-h-screen relative z-[1] p-4 pt-20 md:p-10 md:pt-10">
-          {children}
-        </main>
+        <HydrationProvider>
+          <main className="ml-0 md:ml-[280px] min-h-screen relative z-[1] p-4 pt-20 md:p-10 md:pt-10">
+            {children}
+          </main>
+        </HydrationProvider>
         <Toaster
           theme="dark"
           position="top-right"

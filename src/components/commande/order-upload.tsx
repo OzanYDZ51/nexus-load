@@ -14,6 +14,8 @@ import type { ColumnMapping, RawExcelData } from "@/lib/column-mapping";
 
 export function OrderUpload() {
   const catalog = useNexusStore((s) => s.catalog);
+  const setCatalog = useNexusStore((s) => s.setCatalog);
+  const setOrder = useNexusStore((s) => s.setOrder);
   const [dragOver, setDragOver] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingData, setPendingData] = useState<RawExcelData | null>(null);
@@ -67,21 +69,11 @@ export function OrderUpload() {
           return;
         }
 
-        // Atomic store update: set catalog + order in one shot to avoid
-        // intermediate renders where catalog exists but order is empty
         if (catalog.length === 0) {
           const products = result.items.map(({ qty, ...product }) => product);
-          useNexusStore.setState({
-            catalog: products,
-            order: result.items,
-            optimizationResults: null,
-          });
-        } else {
-          useNexusStore.setState({
-            order: result.items,
-            optimizationResults: null,
-          });
+          setCatalog(products);
         }
+        setOrder(result.items);
 
         const totalQty = result.items.reduce((s, i) => s + i.qty, 0);
         toast.success(
@@ -102,7 +94,7 @@ export function OrderUpload() {
       setModalOpen(false);
       setPendingData(null);
     },
-    [pendingData, catalog]
+    [pendingData, catalog, setCatalog, setOrder]
   );
 
   const handleCancel = useCallback(() => {
