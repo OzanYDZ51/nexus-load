@@ -1,14 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Download } from "lucide-react";
+import { Search, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useNexusStore } from "@/lib/store";
 import { exportCatalogToExcel } from "@/lib/excel-export";
+
+function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages: (number | "ellipsis")[] = [1];
+  const left = Math.max(2, current - 1);
+  const right = Math.min(total - 1, current + 1);
+  if (left > 2) pages.push("ellipsis");
+  for (let i = left; i <= right; i++) pages.push(i);
+  if (right < total - 1) pages.push("ellipsis");
+  pages.push(total);
+  return pages;
+}
 
 export function ProductTable() {
   const catalog = useNexusStore((s) => s.catalog);
   const updateProduct = useNexusStore((s) => s.updateProduct);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const perPage = 10;
 
   if (catalog.length === 0) return null;
 
@@ -16,6 +30,12 @@ export function ProductTable() {
     item.reference.toLowerCase().includes(search.toLowerCase()) ||
     (item.name && item.name.toLowerCase().includes(search.toLowerCase()))
   );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedItems = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
+  const startIndex = (currentPage - 1) * perPage + 1;
+  const endIndex = Math.min(currentPage * perPage, filtered.length);
 
   return (
     <div className="mt-7">
@@ -27,23 +47,17 @@ export function ProductTable() {
             type="text"
             placeholder="Rechercher une référence..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="flex-1 bg-transparent border-none text-text-primary font-[family-name:var(--font-body)] text-sm outline-none placeholder:text-text-dim"
           />
         </div>
-        <div className="flex items-center gap-4">
-          <div className="font-[family-name:var(--font-mono)] text-[13px] text-text-secondary">
-            <span className="text-primary-cyan font-bold">{filtered.length}</span>{" "}
-            produits chargés
-          </div>
-          <button
-            onClick={() => exportCatalogToExcel(catalog)}
-            className="flex items-center gap-2 px-4 py-2 bg-bg-card border border-glass-border rounded-lg text-xs font-[family-name:var(--font-display)] font-bold tracking-[1px] uppercase text-text-secondary hover:text-primary-cyan hover:border-primary-cyan transition-all duration-200"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Exporter Excel
-          </button>
-        </div>
+        <button
+          onClick={() => exportCatalogToExcel(catalog)}
+          className="flex items-center gap-2 px-4 py-2 bg-bg-card border border-glass-border rounded-lg text-xs font-[family-name:var(--font-display)] font-bold tracking-[1px] uppercase text-text-secondary hover:text-primary-cyan hover:border-primary-cyan transition-all duration-200"
+        >
+          <Download className="w-3.5 h-3.5" />
+          Exporter Excel
+        </button>
       </div>
 
       {/* Table */}
@@ -64,7 +78,7 @@ export function ProductTable() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((item) => (
+            {paginatedItems.map((item) => (
               <tr
                 key={item.reference}
                 className="transition-colors duration-200 hover:bg-[rgba(0,240,255,0.03)] border-b border-border-subtle last:border-b-0"
@@ -150,6 +164,81 @@ export function ProductTable() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {filtered.length > 0 && (
+        <div className="flex items-center justify-between mt-4 px-2 gap-4 flex-wrap">
+          <div className="font-[family-name:var(--font-mono)] text-[13px] text-text-secondary">
+            Affichage{" "}
+            <span className="text-primary-cyan font-bold">{startIndex}–{endIndex}</span>{" "}
+            sur <span className="text-primary-cyan font-bold">{filtered.length}</span> produits
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(1)}
+                disabled={currentPage === 1}
+                className="p-1.5 rounded-md border border-glass-border bg-bg-card text-text-secondary hover:text-primary-cyan hover:border-primary-cyan disabled:opacity-30 disabled:pointer-events-none transition-all duration-200"
+                aria-label="Première page"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-1.5 rounded-md border border-glass-border bg-bg-card text-text-secondary hover:text-primary-cyan hover:border-primary-cyan disabled:opacity-30 disabled:pointer-events-none transition-all duration-200"
+                aria-label="Page précédente"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {getPageNumbers(currentPage, totalPages).map((p, i) =>
+                p === "ellipsis" ? (
+                  <span key={`ellipsis-${i}`} className="px-1.5 text-text-dim font-[family-name:var(--font-mono)] text-xs select-none">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`min-w-[32px] h-8 rounded-md border text-xs font-[family-name:var(--font-display)] font-bold tracking-[1px] transition-all duration-200 ${
+                      p === currentPage
+                        ? "bg-primary-cyan border-primary-cyan text-bg-deep"
+                        : "border-glass-border bg-bg-card text-text-secondary hover:text-primary-cyan hover:border-primary-cyan"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-1.5 rounded-md border border-glass-border bg-bg-card text-text-secondary hover:text-primary-cyan hover:border-primary-cyan disabled:opacity-30 disabled:pointer-events-none transition-all duration-200"
+                aria-label="Page suivante"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="p-1.5 rounded-md border border-glass-border bg-bg-card text-text-secondary hover:text-primary-cyan hover:border-primary-cyan disabled:opacity-30 disabled:pointer-events-none transition-all duration-200"
+                aria-label="Dernière page"
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="font-[family-name:var(--font-display)] text-[11px] font-bold tracking-[1px] uppercase text-text-dim">
+              Page {currentPage} sur {totalPages}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

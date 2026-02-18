@@ -71,8 +71,13 @@ export const useNexusStore = create<NexusState>()((set, get) => ({
     const newCatalog = get().catalog.map((p) =>
       p.reference === reference ? { ...p, ...updates } : p
     );
-    set({ catalog: newCatalog });
+    // Sync stacking/orientation changes to matching order items
+    const newOrder = get().order.map((o) =>
+      o.reference === reference ? { ...o, ...updates } : o
+    );
+    set({ catalog: newCatalog, order: newOrder });
     api.catalog.updateProduct(reference, updates).catch(console.error);
+    api.order.save(newOrder).catch(console.error);
   },
   clearCatalog: () => {
     set({ catalog: [], order: [], optimizationResults: null });
@@ -87,7 +92,8 @@ export const useNexusStore = create<NexusState>()((set, get) => ({
     const order = [...get().order];
     const existing = order.findIndex((o) => o.reference === product.reference);
     if (existing >= 0) {
-      order[existing] = { ...order[existing], qty: order[existing].qty + qty };
+      // Merge latest catalog properties (stacking, orientation) + add quantity
+      order[existing] = { ...order[existing], ...product, qty: order[existing].qty + qty };
     } else {
       order.push({ ...product, qty });
     }

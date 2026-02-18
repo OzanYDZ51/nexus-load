@@ -149,7 +149,7 @@ function tryPlace(truck: TruckLoad, item: PackItem): boolean {
         }
 
         stackLevel = getStackLevel(truck, support);
-        const maxLevels = support.maxStackLevels ?? 2;
+        const maxLevels = item.maxStackLevels ?? support.maxStackLevels ?? 2;
         if (stackLevel >= maxLevels) continue; // Stack limit reached
       }
 

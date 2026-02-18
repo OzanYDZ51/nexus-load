@@ -244,9 +244,19 @@ function parseWithMapping(
         continue;
       }
 
-      const stackable = getBool(row, keys, mapping, "empilable");
-      const maxStackLevels = getOptionalInt(row, keys, mapping, "maxNiveaux", 2);
-      const orientationConstraint = getOrientation(row, keys, mapping);
+      let stackable = getBool(row, keys, mapping, "empilable");
+      let maxStackLevels = getOptionalInt(row, keys, mapping, "maxNiveaux", 2);
+      let orientationConstraint = getOrientation(row, keys, mapping);
+
+      // Inherit stacking/orientation config from catalog if not in order file
+      if (hasCatalog) {
+        const catalogProduct = catalogMap.get(reference.toLowerCase());
+        if (catalogProduct) {
+          if (stackable === undefined) stackable = catalogProduct.stackable;
+          if (maxStackLevels === undefined) maxStackLevels = catalogProduct.maxStackLevels;
+          if (!orientationConstraint) orientationConstraint = catalogProduct.orientationConstraint;
+        }
+      }
 
       const existing = items.find(
         (i) => i.reference.toLowerCase() === reference.toLowerCase()
