@@ -75,6 +75,23 @@ function getStackLevel(truck: TruckLoad, support: PlacedItem): number {
   return support.stackLevel + 1;
 }
 
+function isStackingPoint(
+  truck: TruckLoad,
+  point: Point,
+  reference: string
+): boolean {
+  if (point.z <= 0.01) return false;
+  return truck.items.some((pi) => {
+    if (pi.reference !== reference || !pi.stackable) return false;
+    const topZ = pi.position.z + pi.dims.h;
+    if (Math.abs(topZ - point.z) > 0.02) return false;
+    return (
+      Math.abs(point.x - pi.position.x) < 0.01 &&
+      Math.abs(point.y - pi.position.y) < 0.01
+    );
+  });
+}
+
 function tryPlace(truck: TruckLoad, item: PackItem): boolean {
   const allOrientations: Orientation[] = [
     { l: item.longueur, w: item.largeur, h: item.hauteur },
@@ -97,6 +114,14 @@ function tryPlace(truck: TruckLoad, item: PackItem): boolean {
     : allOrientations;
 
   const sortedPoints = [...truck.availablePoints].sort((a, b) => {
+    if (item.stackable) {
+      const aStack = isStackingPoint(truck, a, item.reference);
+      const bStack = isStackingPoint(truck, b, item.reference);
+      if (aStack !== bStack) return aStack ? -1 : 1;
+      if (aStack && bStack) {
+        if (Math.abs(a.z - b.z) > 0.01) return a.z - b.z;
+      }
+    }
     if (Math.abs(a.z - b.z) > 0.01) return a.z - b.z;
     if (Math.abs(a.y - b.y) > 0.01) return a.y - b.y;
     return a.x - b.x;
